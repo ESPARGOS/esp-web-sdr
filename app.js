@@ -1,8 +1,9 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const s3Channels=Array.from({length:13},(_,i)=>2412+i*5).concat(2484);
-function nearestS3Channel(f){return s3Channels.reduce((a,b)=>Math.abs(a-f)<=Math.abs(b-f)?a:b);}
+function nearestS3Channel(f){if(radio.family==='ESP32')return Math.max(2412,Math.min(2472,2412+5*Math.round((f-2412)/5)));return s3Channels.reduce((a,b)=>Math.abs(a-f)<=Math.abs(b-f)?a:b);}
 function applyRadioProfile(){
+ $('frequency').min=radio.family==='ESP32'?'2412':'100';$('frequency').max=radio.family==='ESP32'?'2472':'6000';$('frequency').step=radio.family==='ESP32'?'5':'1';
  $('gain').min=radio.gainMin;$('gain').max=radio.gainMax;$('gain').step=radio.gainStep;$('gain').value=Math.min(Math.max(40,radio.gainMin),radio.gainMax);$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;
  $('gainMode').querySelector('[value=HARDWARE]').disabled=!radio.hasHardwareAgc;
  if(!radio.hasGain||(!radio.hasHardwareAgc&&$('gainMode').value==='HARDWARE'))$('gainMode').value='MANUAL';
@@ -37,7 +38,7 @@ function error(e,communication=false){
  const box=$('error');box.textContent=e?.message||e;box.hidden=!e;
  if(e&&communication){const link=document.createElement('a');link.href='/flash.html';link.textContent='Install / update ESP-SDR firmware';box.append(' ',link);}
 }
-function config(){return {frequency:tuneFrequency,rate:Number($('rate').value),bits:Number($('bits').value),fft:Number($('fft').value),bandwidth:analogBandwidth,gainMode:$('gainMode').value,gain:Number($('gain').value),trigger:{mode:$('rxTrigger').value,threshold:Number($('rxThreshold').value),...((radio.family==='S3'||radio.family==='C6')&&$('rxTrigger').value==='ble'?{offset_hz:(Number($('bleChannel').value)-tuneFrequency)*1e6}:{})}};}
+function config(){return {frequency:tuneFrequency,rate:Number($('rate').value),bits:Number($('bits').value),fft:Number($('fft').value),bandwidth:analogBandwidth,gainMode:$('gainMode').value,gain:Number($('gain').value),trigger:{mode:$('rxTrigger').value,threshold:Number($('rxThreshold').value),...((radio.family==='ESP32'||radio.family==='S3'||radio.family==='C6')&&$('rxTrigger').value==='ble'?{offset_hz:(Number($('bleChannel').value)-tuneFrequency)*1e6}:{})}};}
 function clear(){trace=null;maximum=null;wc.fillStyle='#11191e';wc.fillRect(0,0,water.width,water.height);draw();}
 function resize(){const old=document.createElement('canvas');old.width=water.width;old.height=water.height;old.getContext('2d').drawImage(water,0,0);const d=Math.min(devicePixelRatio||1,2);spec.width=Math.round(spec.clientWidth*d);spec.height=Math.round(spec.clientHeight*d);water.width=Math.round(water.clientWidth);water.height=Math.round(water.clientHeight);wc.fillStyle='#11191e';wc.fillRect(0,0,water.width,water.height);wc.drawImage(old,0,0,old.width,old.height,0,0,water.width,old.height);draw();}
 function labels(f){const warning=connected?radio.frequencyWarning(tuneFrequency):'';$('tuningWarning').textContent=warning;$('tuningWarning').hidden=!warning;const c=f||config();$('axis').replaceChildren(...Array.from({length:5},(_,i)=>{const el=document.createElement('span');el.textContent=((c.frequency*1e6+(i/4-.5)*c.rate)/1e6).toFixed(3);return el;}));}
@@ -76,14 +77,14 @@ for(const b of document.querySelectorAll('[data-freq]'))b.onclick=()=>{$('freque
 for(const id of ['floor','range'])$(id).oninput=()=>{$('floorValue').textContent=$('floor').value+' dBFS';$('rangeValue').textContent=$('range').value+' dB';$('scale').textContent=`${$('floor').value} → ${Number($('floor').value)+Number($('range').value)} dBFS`;clear();};
 $('hold').onchange=()=>{maximum=null;draw();};
 spec.onmousemove=e=>{if(!latest)return;const x=(e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth,i=Math.max(0,Math.min(latest.fft-1,Math.floor(x*latest.fft)));$('cursor').textContent=`${((latest.frequency*1e6+(x-.5)*latest.rate)/1e6).toFixed(5)} MHz · ${latest.spectrum[i].toFixed(1)} dBFS`;};
-spec.onclick=e=>{if(connected&&latest){tuneFrequency=Math.round(latest.frequency+((e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth-.5)*latest.rate/1e6);if(radio.family==='S31')tuneFrequency=Math.max(2300,Math.min(2800,tuneFrequency));if(radio.family==='C61')tuneFrequency=Math.max(2400,Math.min(2500,tuneFrequency));if((radio.family==='S3'||radio.family==='C6'))tuneFrequency=radio.hasExtendedTune?Math.max(radio.tuneRange[0],Math.min(radio.tuneRange[1],tuneFrequency)):nearestS3Channel(tuneFrequency);$('frequency').value=tuneFrequency;labels();}};
+spec.onclick=e=>{if(connected&&latest){tuneFrequency=Math.round(latest.frequency+((e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth-.5)*latest.rate/1e6);if(radio.family==='S31')tuneFrequency=Math.max(2300,Math.min(2800,tuneFrequency));if(radio.family==='C61')tuneFrequency=Math.max(2400,Math.min(2500,tuneFrequency));if((radio.family==='ESP32'||radio.family==='S3'||radio.family==='C6'))tuneFrequency=radio.hasExtendedTune?Math.max(radio.tuneRange[0],Math.min(radio.tuneRange[1],tuneFrequency)):nearestS3Channel(tuneFrequency);$('frequency').value=tuneFrequency;labels();}};
 new ResizeObserver(resize).observe(spec);labels();state();
 
 let triggerScanned=0,triggerMatched=0;
 function selectRxFrame(f){
  const selected=f.trigger||config().trigger;
  if(f.frequency!==tuneFrequency||f.rate!==Number($('rate').value)||JSON.stringify(selected)!==JSON.stringify(config().trigger))return false;
- if(selected.mode==='ble'&&radio.family!=='S3'&&radio.family!=='C6'&&![2402,2426,2480].includes(f.frequency))throw Error('BLE advertising detection requires 2402, 2426 or 2480 MHz.');
+ if(selected.mode==='ble'&&radio.family!=='ESP32'&&radio.family!=='S3'&&radio.family!=='C6'&&![2402,2426,2480].includes(f.frequency))throw Error('BLE advertising detection requires 2402, 2426 or 2480 MHz.');
  const result=rxTrigger(f.iq,f.rate,selected);f.trigger_result=result;
  triggerScanned++;if(result.matched)triggerMatched++;
  $('triggerStatus').textContent=selected.mode==='free'?'Free running':`${result.matched?'Matched snapshot':'Waiting'} · ${triggerMatched}/${triggerScanned} selected · peak ${result.peak_dbfs.toFixed(1)} dBFS`;
@@ -97,8 +98,8 @@ function triggerChanged(){
 }
 $('rxTrigger').onchange=()=>{
  if($('rxTrigger').value==='wifi')$('rate').value=String([20000000,40000000,80000000].find(rate=>radio.rxRates.includes(rate)));
- if($('rxTrigger').value==='ble'){$('rate').value=(radio.family==='S3'||radio.family==='C6')?'80000000':'4000000';tuneFrequency=(radio.family==='S3'||radio.family==='C6')&&!radio.hasExtendedTune?nearestS3Channel(Number($('bleChannel').value)):Number($('bleChannel').value);$('frequency').value=tuneFrequency;}
+ if($('rxTrigger').value==='ble'){$('rate').value=(radio.family==='ESP32'||radio.family==='S3'||radio.family==='C6')?'80000000':'4000000';tuneFrequency=(radio.family==='ESP32'||radio.family==='S3'||radio.family==='C6')&&!radio.hasExtendedTune?nearestS3Channel(Number($('bleChannel').value)):Number($('bleChannel').value);$('frequency').value=tuneFrequency;}
  triggerChanged();
 };
 $('rxThreshold').onchange=triggerChanged;
-$('bleChannel').onchange=()=>{tuneFrequency=(radio.family==='S3'||radio.family==='C6')&&!radio.hasExtendedTune?nearestS3Channel(Number($('bleChannel').value)):Number($('bleChannel').value);$('frequency').value=tuneFrequency;triggerChanged();};
+$('bleChannel').onchange=()=>{tuneFrequency=(radio.family==='ESP32'||radio.family==='S3'||radio.family==='C6')&&!radio.hasExtendedTune?nearestS3Channel(Number($('bleChannel').value)):Number($('bleChannel').value);$('frequency').value=tuneFrequency;triggerChanged();};

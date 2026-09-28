@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "rx-controls-20260928",
+  "version": "multiple releases",
   "variants": {
     "esp32c5": {
       "revision": "esp32c5",
@@ -214,6 +214,49 @@
           "size": 778432,
           "sha256": "396290867639ff08698c4230744ece1b9afedaa41b1035f67edd3a844e74fed0",
           "md5": "564d0cb8c2d276885c83a52e25c3662a"
+        }
+      ]
+    },
+    "esp32": {
+      "revision": "esp32",
+      "label": "ESP32 (2 MB or larger, UART)",
+      "target": "esp32",
+      "chip": "ESP32",
+      "version": "esp32-bandwidth-20260928",
+      "flash_size": "2MB",
+      "flash_size_policy": "minimum",
+      "flash_settings": {
+        "flash_mode": "dio",
+        "flash_size": "2MB",
+        "flash_freq": "40m"
+      },
+      "esptool_args": {
+        "after": "hard-reset",
+        "before": "default-reset",
+        "stub": true,
+        "chip": "esp32"
+      },
+      "parts": [
+        {
+          "name": "0-bootloader.bin",
+          "offset": 4096,
+          "size": 25792,
+          "sha256": "490a0a5c701c14d8273ce75f349063b83a34e4a269347b4db202c6c08c153dd6",
+          "md5": "0d8c503d7c198c66b59f12c2fa513d5b"
+        },
+        {
+          "name": "1-partition-table.bin",
+          "offset": 32768,
+          "size": 3072,
+          "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+          "md5": "5d61d196adc3dba01928f264eb169be7"
+        },
+        {
+          "name": "2-esp_sdr.bin",
+          "offset": 65536,
+          "size": 656304,
+          "sha256": "8bae123df0d0ab05884589a5dd457e0f211129aff28a95f5ea641ed466690b89",
+          "md5": "c81f5d9f1349b14c6516250fcd5c9224"
         }
       ]
     }

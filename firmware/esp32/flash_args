@@ -1,0 +1,6 @@
+--flash-mode dio
+--flash-freq 40m
+--flash-size 2MB
+0x1000 esp32/0-bootloader.bin
+0x8000 esp32/1-partition-table.bin
+0x10000 esp32/2-esp_sdr.bin

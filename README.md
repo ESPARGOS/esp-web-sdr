@@ -2,7 +2,10 @@
 
 A static browser SDR viewer and firmware installer. **No website build step,
 package installation, or generated HTML is required.** The viewer supports
-C5/C6/C61/S3/S31 protocol-6 snapshots over integrated USB Serial/JTAG and C6/C61/S3/S31 UART0.
+C5/C6/C61/S3/S31 protocol-6 snapshots over integrated USB Serial/JTAG and
+original ESP32/C6/C61/S3/S31 over UART0. The original ESP32 uses 2 MBaud UART,
+80/40/16 MS/s snapshots, Wi-Fi channel centers from 2412–2472 MHz, and
+approximate 12–67 MHz analog bandwidth control plus wide open.
 
 ## Serve the website
 
