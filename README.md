@@ -27,8 +27,9 @@ Use native USB or UART at **2,000,000 baud, 8N1, no flow control**.
 See the [ESP-SDR guide](https://espargos.net/espsdr/) for supported chips and setup.
 
 ESP32-C3 firmware supports native USB, 80 MS/s IQ8/IQ10 snapshots, and
-approximately 14–62 MHz analog bandwidth. Tune to Wi-Fi channel centers
-2412–2472 MHz in 5 MHz steps, or 2484 MHz. The viewer discovers these controls
+approximately 14–62 MHz analog bandwidth. Tuning is attempted over
+2100–2800 MHz in 1 MHz steps, with a warning outside the normal Wi-Fi band.
+The viewer discovers these controls
 automatically from the firmware.
 
 ## Receive controls

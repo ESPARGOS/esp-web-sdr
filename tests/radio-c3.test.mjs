@@ -16,7 +16,7 @@ test('C3 identity negotiates buffer length without changing C5/S3 compatibility'
  for(const bad of ['C3SDR 5 burst 12284','C3SDR 6 burst 0','C3SDR 6 burst 999999','C2SDR 6 burst 12284','C3SDR 6 burst 12284 junk'])
   assert.throws(()=>radio.applyIdentity(bad),/Unsupported/);
 });
-test('C3 restricts tuning to supported Wi-Fi channel centers',()=>{
+test('older C3 firmware remains restricted to Wi-Fi channel centers',()=>{
  const {radio}=makeRadio();radio.applyIdentity('C3SDR 6 burst 16380');
  assert.deepEqual(Array.from(radio.rxRates),[80000000]);
  for(const f of [2412,2437,2472,2484])assert.equal(radio.validFrequency(f),true);
@@ -58,5 +58,21 @@ test('C3 negotiates and sends the measured analog bandwidth through the normal v
  await radio.tune(2484,62);await radio.tune(2484,0);
  assert.deepEqual(commands.slice(2),['FREQ 2484','BANDWIDTH 62','BANDWIDTH 0']);
  for(const bad of [13,63,20.5])await assert.rejects(radio.tune(2412,bad),/analog bandwidth/);
- await assert.rejects(radio.tune(2413,20),/Wi-Fi channel center/);
+ await assert.rejects(radio.tune(2413,20),/extended tuning/);
+});
+
+test('extended C3 tuning attempts exact MHz and warns without blocking capture',async()=>{
+ const {radio}=makeRadio();radio.applyIdentity('C3SDR 6 burst 16380');
+ radio.hasExtendedTune=true;radio.tuneRange=[2100,2800];
+ radio.applyLimits('LIMITS {"gain":[0,79,1],"bandwidth":[14,62,1,0],"rates":[80000000],"bits":[8,10]}');
+ radio.port={};const commands=[];
+ radio.command=async c=>commands.push(c);radio.line=async()=> 'OK';
+ for(const f of [2100,2300,2390,2402,2413,2426,2480,2500,2700,2800]){
+  assert.equal(radio.validFrequency(f),true);await radio.tune(f,20);
+  assert.equal(commands.at(-1),f===2100?'BANDWIDTH 20':`FREQ ${f}`);
+ }
+ for(const f of [2100,2300,2402,2500,2800])assert.match(radio.frequencyWarning(f),/Tuning will be attempted/);
+ for(const f of [2412,2413,2426,2480,2484])assert.equal(radio.frequencyWarning(f),'');
+ for(const f of [2099,2801,5180,2412.5,NaN])assert.equal(radio.validFrequency(f),false);
+ await assert.rejects(radio.tune(2801,20),/2100 to 2800/);
 });

@@ -315,7 +315,7 @@
       "label": "ESP32-C3 (2 MB or larger)",
       "target": "esp32c3",
       "chip": "ESP32-C3",
-      "version": "local-c3-20260928",
+      "version": "c3-tuning-20260928",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -347,9 +347,9 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 688672,
-          "sha256": "5844fe4215962c41e67fd51495681e0d10004f33a485e31a06ce5d8deb18b893",
-          "md5": "741cd9d6afede7dd3c148392ae1d110c"
+          "size": 688656,
+          "sha256": "0ae9e3b9709989980cbf56171c508663681e6eb928361afc15ae1ddbbbda80d1",
+          "md5": "1caa5fbf4c98596e85ee5396e8d1e4ae"
         }
       ],
       "build_date": "2026-09-28"

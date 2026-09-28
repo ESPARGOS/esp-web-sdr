@@ -25,6 +25,7 @@ jobs:
             *.js
             *.css
             espargos-logo.svg
+            favicon-*.png
             flasher/
             firmware/
           if-no-files-found: error

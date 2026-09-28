@@ -4,7 +4,7 @@ const s3Channels=Array.from({length:13},(_,i)=>2412+i*5).concat(2484);
 function nearestS3Channel(f){if(radio.family==='ESP32')return Math.max(2412,Math.min(2472,2412+5*Math.round((f-2412)/5)));return s3Channels.reduce((a,b)=>Math.abs(a-f)<=Math.abs(b-f)?a:b);}
 function preferredSampleRate(rates=radio.rxRates){return rates.includes(80000000)?80000000:Math.max(...rates);}
 function applyRadioProfile(){
- $('frequency').min=['ESP32','C3'].includes(radio.family)?'2412':'100';$('frequency').max=radio.family==='ESP32'?'2472':radio.family==='C3'?'2484':'6000';$('frequency').step=radio.family==='ESP32'?'5':'1';
+ $('frequency').min=radio.family==='ESP32'?'2412':'100';$('frequency').max=radio.family==='ESP32'?'2472':'6000';$('frequency').step=radio.family==='ESP32'?'5':'1';
  $('gain').min=radio.gainMin;$('gain').max=radio.gainMax;$('gain').step=radio.gainStep;$('gain').value=Math.min(Math.max(40,radio.gainMin),radio.gainMax);$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;
  $('gainMode').querySelector('[value=HARDWARE]').disabled=!radio.hasHardwareAgc;
  if(!radio.hasGain||(!radio.hasHardwareAgc&&$('gainMode').value==='HARDWARE'))$('gainMode').value='MANUAL';
