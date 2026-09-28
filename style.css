@@ -1,0 +1,29 @@
+:root{color-scheme:dark;--bg:#11191e;--panel:#293135;--line:#394348;--muted:#a1adb2;--accent:#37c964}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#dee2e6;font:16px/1.5 Carlito,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif}header{height:90px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 32px}.brand{display:flex;align-items:center;gap:14px}.mark{font-size:36px;color:var(--accent)}h1{font-size:22px;margin:0;font-weight:650}.brand div>span{color:var(--muted);font-size:14px;letter-spacing:0}.connection{display:flex;align-items:center;gap:12px}#light{width:8px;height:8px;background:#718096;border-radius:50%}#light.on{background:var(--accent);box-shadow:0 0 12px #37c96470}button,input,select{font:inherit}button{border:1px solid var(--line);border-radius:7px;background:#293135;color:#dee2e6;padding:9px 14px;cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.4;cursor:default}#connect{background:var(--accent);color:#11191e;border:0;font-weight:650}main{display:grid;grid-template-columns:340px minmax(0,1fr);max-width:1920px;margin:auto}aside{padding:25px 22px;border-right:1px solid var(--line)}.eyebrow{font-size:14px;letter-spacing:0;color:var(--muted);font-weight:650}label{display:block;font-size:16px;color:#c0c9cd;margin-top:17px}label>span,output{float:right;color:var(--muted)}input[type=number],select{display:block;min-width:0;font-size:16px;width:100%;background:#11191e;color:#dee2e6;border:1px solid var(--line);border-radius:6px;padding:10px;margin-top:7px}input[type=number]{font:22px Carlito,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif}input[type=range]{width:100%;accent-color:var(--accent);margin-top:12px}.quiet{padding:4px 0;border:0;background:none;color:var(--accent);font-size:14px}.presets,.actions,.pair{display:flex;gap:8px}.presets{margin-top:8px}.presets button{font-size:14px;padding:5px 12px}.pair label{width:50%}.actions{margin-top:12px}.actions button{flex:1;padding:8px;font-size:14px}.divider{border-top:1px solid var(--line);margin:24px 0 20px}.check{display:flex;gap:8px;align-items:center}.check input{accent-color:var(--accent)}.note{font-size:14px;color:var(--muted);line-height:1.7}.note{margin-top:22px}a{color:var(--accent);font-size:14px}.display{padding:25px 28px;min-width:0}.chart{background:#182126;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:14px;position:relative}.charthead{display:flex;justify-content:space-between;padding:12px 16px;font-size:14px;letter-spacing:0;color:#aab6bb;border-bottom:1px solid #293135}.charthead small{font-size:14px;letter-spacing:0;color:#94a2a8;margin-left:10px}canvas{display:block;width:100%}#spectrum{height:220px;cursor:crosshair}#waterfall{height:380px}.axis{display:flex;justify-content:space-between;font:14px Carlito,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif;padding:8px 12px;color:var(--muted);border-top:1px solid #293135}.waterfall{background:#11191e}#empty{position:absolute;inset:45px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;background:radial-gradient(ellipse,#293b3288,transparent)}#empty[hidden]{display:none}.empty-icon{font-size:48px;color:#37c964}h2{font-size:20px;margin:15px 0 0}#empty p{color:var(--muted);max-width:400px}#empty small{color:#94a2a8}footer{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap;color:var(--muted);font-size:14px}footer b{color:#dee2e6;font:14px Carlito,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif}#crc{color:var(--accent)}#error{background:#49242a;border:1px solid #94515d;border-radius:7px;padding:12px;margin-bottom:16px;color:#ffd5da}@media(max-width:850px){header{padding:16px;height:auto;gap:10px}.brand div>span{display:none}.connection{gap:8px;font-size:14px}main{grid-template-columns:1fr}aside{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;border-right:0;border-bottom:1px solid var(--line);padding:18px}.divider,.note,aside>.eyebrow,aside>a{grid-column:1/-1}.display{padding:18px}#cursor{display:none}.charthead{font-size:14px}#waterfall{height:340px}}
+
+@media(max-width:850px){.pair{grid-column:1/-1}.presets{align-self:end}.actions{align-self:center}.brand h1{white-space:nowrap;font-size:18px}.brand{gap:8px}.mark{font-size:28px}.connection{gap:6px}header{padding:12px}.connection button{padding:9px 10px}}
+input[type=file]{display:block;width:100%;font-size:14px;margin-top:8px}.note{margin-top:12px}
+@media(min-width:851px){aside{max-height:calc(100vh - 90px);overflow-y:auto;scrollbar-color:#394348 #11191e}.display{align-self:start}}
+
+/* ESPARGOS site palette; the transparent logo sits on its dark body color. */
+.brand-logo{display:block;width:175px;height:35px;object-fit:contain;background:#11191e}header{background:#11191e}.brand h1{font-size:18px}
+@media(max-width:850px){header{flex-wrap:wrap}.brand-logo{width:140px;height:28px}.brand h1{font-size:16px}.connection{margin-left:auto}}
+
+[hidden]{display:none!important}
+
+#rxThreshold{font-size:16px}@media(max-width:850px){#rxTriggerLabel,#triggerStatus{grid-column:1/-1}}
+
+/* Keep larger settings text comfortable on narrow screens. */
+aside>*{min-width:0}.pair label{min-width:0;flex:1}.charthead{gap:12px;flex-wrap:wrap}#empty small{font-size:14px}
+@media(max-width:550px){aside{grid-template-columns:minmax(0,1fr)}.axis span:nth-child(even){display:none}}
+
+.note:empty{display:none}
+
+
+
+
+
+#deviceModel{font-weight:700;color:var(--accent);white-space:nowrap}.connection{flex-wrap:wrap;justify-content:flex-end}
+
+aside input:disabled,aside select:disabled{opacity:.5;cursor:not-allowed}#error a{font-size:inherit}
+
+#tuningWarning{background:#44391e;border:1px solid #9c8242;border-radius:7px;padding:12px;margin-bottom:16px;color:#ffe3a0}

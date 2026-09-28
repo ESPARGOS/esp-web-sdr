@@ -1,0 +1,12 @@
+# Normalize source files across platforms.
+* text=auto eol=lf
+
+# Firmware and other binary assets must remain byte-identical.
+*.bin binary
+*.rgb565 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

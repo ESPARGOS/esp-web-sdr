@@ -1,0 +1,5 @@
+{
+  "profile": "esp32c5",
+  "version": "rx-controls-20260928",
+  "idf_commit": "25fe69f946311abdaf9ad56591f25fedbc20ac98"
+}

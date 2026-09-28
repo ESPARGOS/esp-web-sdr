@@ -1,0 +1,24 @@
+# Downloaded CI artifacts
+/artifacts/
+/test-results/
+
+# firmware/ and vendor licenses are intentional release inputs.
+
+# Python development files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Editor and operating-system files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.log
+
