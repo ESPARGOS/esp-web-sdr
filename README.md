@@ -5,6 +5,9 @@ FFT spectra, waterfalls, tuning, gain and bandwidth controls.
 
 ![ESP-WebSDR spectrum and waterfall](docs/spectrum-demo.jpg)
 
+**Parts of this code are AI-generated.**
+While we put a lot of manual effort into [pyespargos](https://github.com/ESPARGOS/pyespargos) and the firmware for our ESPARGOS One arrays, we don't have the time to manually review all of the source code for ESP-WebSDR.
+
 ## Get started
 
 1. Use a browser with Web Serial support and connect your board over USB.
