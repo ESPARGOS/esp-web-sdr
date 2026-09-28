@@ -38,3 +38,12 @@ export async function checkedImages(variant, profile, manifestUrl) {
  }
  return files;
 }
+
+
+// Missing dates on older artifacts must not expose internal release labels.
+export function firmwareDate(variant) {
+ const value=variant?.build_date;
+ if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return 'Unavailable';
+ const date=new Date(value+'T00:00:00Z');
+ return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value?value:'Unavailable';
+}

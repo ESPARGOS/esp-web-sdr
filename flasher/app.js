@@ -1,5 +1,5 @@
 import {ESPLoader,Transport} from './vendor/esptool-js-0.7.0.js';
-import {loadManifest,checkedImages} from './catalog.mjs';
+import {loadManifest,checkedImages,firmwareDate} from './catalog.mjs';
 const $=id=>document.getElementById(id);
 const manifestUrl=new URL('../firmware/manifest.json',import.meta.url);
 let firmware=null;
@@ -26,7 +26,7 @@ function buttons(){const supported=!!navigator.serial&&isSecureContext;$('connec
 function beforeUnload(e){if(busy){e.preventDefault();e.returnValue='';}}
 window.addEventListener('beforeunload',beforeUnload);
 async function disconnect(){loader=null;detectedFlashSize=null;if(transport){const t=transport;transport=null;await t.disconnect();}$('device').textContent='Not connected';}
-$('revision').onchange=()=>{buttons();$('version').textContent=firmware.variants[$('revision').value]?.version||firmware.version;status((firmware.variants[$('revision').value]?.label||'No board')+' selected. Install firmware matching your ESP32 chip.');};
+$('revision').onchange=()=>{buttons();$('version').textContent=$('revision').value?firmwareDate(firmware.variants[$('revision').value]):'Choose a chip profile';status((firmware.variants[$('revision').value]?.label||'No board')+' selected. Install firmware matching your ESP32 chip.');};
 $('connect').onclick=async()=>{
  busy=true;buttons();$('log').textContent='';status('Select your ESP32 device.');
  try{
@@ -81,12 +81,11 @@ async function initialize(){
    option.textContent=variant.label+(variant.browser_supported?'':' · browser flashing unavailable');
    option.disabled=!variant.browser_supported;$('revision').append(option);
   }
-  const versions=[...new Set(Object.values(firmware.variants).map(v=>v.version))];
-  $('version').textContent=versions.join(', ');
+  $('version').textContent='Choose a chip profile';
   const unavailable=Object.values(firmware.variants).filter(v=>!v.browser_supported);
   if(unavailable.length){const note=document.createElement('p');note.className='muted';note.textContent=unavailable.map(v=>v.chip).join(', ')+': firmware is available, but the bundled browser flasher does not support this chip yet. Use ESP-IDF/esptool with the firmware artifact.';$('revision').after(note);}
   const requestedBoard=new URLSearchParams(location.search).get('board');
-  if(requestedBoard&&firmware.variants[requestedBoard]?.browser_supported)$('revision').value=requestedBoard;
+  if(requestedBoard&&firmware.variants[requestedBoard]?.browser_supported){$('revision').value=requestedBoard;$('version').textContent=firmwareDate(firmware.variants[requestedBoard]);}
   status(navigator.serial&&isSecureContext?'Ready.':'This browser needs Web Serial support. Serve this page over HTTPS or localhost.',!(navigator.serial&&isSecureContext));
  }catch(e){firmware=null;status(`Cannot load firmware: ${e.message} Check that the firmware folder is deployed alongside this website.`,true);}
  buttons();

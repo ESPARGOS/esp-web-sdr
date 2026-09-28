@@ -60,7 +60,9 @@ test('extended C6 tuning sends exact MHz and warns without blocking capture',asy
  radio.hasExtendedTune=true;radio.tuneRange=[2100,2800];
  const commands=[];radio.command=async c=>commands.push(c);radio.line=async()=> 'OK';
  for(const f of [2100,2390,2402,2413,2426,2480,2500,2800]){
-  assert.equal(radio.validFrequency(f),true);assert.match(radio.frequencyWarning(f),/Tuning will be attempted/);
+  assert.equal(radio.validFrequency(f),true);
+  if(f<2412||f>2484)assert.match(radio.frequencyWarning(f),/Tuning will be attempted/);
+  else assert.equal(radio.frequencyWarning(f),'');
   await radio.tune(f);assert.equal(commands.at(-1),'FREQ '+f);assert.equal(radio.frequency,f);
  }
  await radio.tune(2412);assert.equal(radio.frequencyWarning(2412),'');

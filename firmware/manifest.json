@@ -43,7 +43,8 @@
           "sha256": "fb9ae3ea4724b7eb1dc04bc6bd9669ea3a57372f19c26cbd46a58bde0dd17481",
           "md5": "5f745b288842d7829a9193be396f80e9"
         }
-      ]
+      ],
+      "build_date": "2026-09-28"
     },
     "esp32c61": {
       "revision": "esp32c61",
@@ -86,7 +87,8 @@
           "sha256": "017e04080bcc9d07f19bb2d05128a6157f1f80ce932c04bbab2a8008cd7e2296",
           "md5": "e60f7f33c742985a98ec914710f9eaca"
         }
-      ]
+      ],
+      "build_date": "2026-09-28"
     },
     "esp32s3": {
       "revision": "esp32s3",
@@ -129,7 +131,8 @@
           "sha256": "da8129a33445702bde7a488e10bb1428aede372f1ea2d9f67943345a327f9c81",
           "md5": "75de9c3e2b2b0909cb93c4709f187d53"
         }
-      ]
+      ],
+      "build_date": "2026-09-28"
     },
     "esp32s31": {
       "revision": "esp32s31",
@@ -172,7 +175,8 @@
           "sha256": "3ba3027a3483459e9947c9191abdcac8d5feb7a6ed4476e9b6fda14b7d330aca",
           "md5": "c90498f3bf97069bee69c750d24a126f"
         }
-      ]
+      ],
+      "build_date": "2026-09-28"
     },
     "esp32c6": {
       "revision": "esp32c6",
@@ -215,7 +219,8 @@
           "sha256": "396290867639ff08698c4230744ece1b9afedaa41b1035f67edd3a844e74fed0",
           "md5": "564d0cb8c2d276885c83a52e25c3662a"
         }
-      ]
+      ],
+      "build_date": "2026-09-28"
     },
     "esp32": {
       "revision": "esp32",
@@ -258,7 +263,52 @@
           "sha256": "8bae123df0d0ab05884589a5dd457e0f211129aff28a95f5ea641ed466690b89",
           "md5": "c81f5d9f1349b14c6516250fcd5c9224"
         }
-      ]
+      ],
+      "build_date": "2026-09-28"
+    },
+    "esp32s2": {
+      "revision": "esp32s2",
+      "label": "ESP32-S2 (4 MB or larger)",
+      "target": "esp32s2",
+      "chip": "ESP32-S2",
+      "version": "s2-usb-uart",
+      "flash_size": "4MB",
+      "flash_size_policy": "minimum",
+      "flash_settings": {
+        "flash_mode": "dio",
+        "flash_size": "4MB",
+        "flash_freq": "80m"
+      },
+      "esptool_args": {
+        "after": "hard-reset",
+        "before": "default-reset",
+        "stub": true,
+        "chip": "esp32s2"
+      },
+      "parts": [
+        {
+          "name": "0-bootloader.bin",
+          "offset": 4096,
+          "size": 22320,
+          "sha256": "ae771de6081922d7190b8aa5960d7a153e3b4f9421e39f17cd44e361f2fdd855",
+          "md5": "8160f5bc267003db54f9921301c7dbf3"
+        },
+        {
+          "name": "1-partition-table.bin",
+          "offset": 32768,
+          "size": 3072,
+          "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+          "md5": "5d61d196adc3dba01928f264eb169be7"
+        },
+        {
+          "name": "2-esp_sdr.bin",
+          "offset": 65536,
+          "size": 628512,
+          "sha256": "ff27803af6df6a59be804ba8de8127bf58fc87faa2e64eeca2162158ccad3b6b",
+          "md5": "f4007be766eddb96e7f236c4a5b0efd0"
+        }
+      ],
+      "build_date": "2026-09-28"
     }
   }
 }

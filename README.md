@@ -1,117 +1,41 @@
 # ESP-WebSDR
 
-A static browser SDR viewer and firmware installer. **No website build step,
-package installation, or generated HTML is required.** The viewer supports
-C5/C6/C61/S3/S31 protocol-6 snapshots over integrated USB Serial/JTAG and
-original ESP32/C6/C61/S3/S31 over UART0. The original ESP32 uses 2 MBaud UART,
-80/40/16 MS/s snapshots, Wi-Fi channel centers from 2412–2472 MHz, and
-approximate 12–67 MHz analog bandwidth control plus wide open.
+Browser spectrum viewer and firmware installer for ESP32, ESP32-C5, C6, C61,
+S2, S3 and S31. View live FFT spectra and waterfalls, tune the receiver, and
+adjust gain, bandwidth and sample precision.
 
-## Serve the website
+![ESP-WebSDR spectrum and waterfall](docs/spectrum-demo.jpg)
 
-Publish the repository's static files on an HTTPS server. For local use:
+## Get started
 
-```sh
-python3 -m http.server 8000
-```
+1. Use a browser with Web Serial support and connect your board over USB.
+2. Install the matching firmware with the [firmware installer](flash.html).
+3. Open the [viewer](index.html), connect to the board, and select a frequency.
 
-Open `http://localhost:8000/` for the viewer or `/flash.html` for the installer.
-Use a browser with Web Serial support. Loading local files with `file://` does
-not support the module/fetch setup; localhost is sufficient and needs no build.
-Fonts, JavaScript and flashing tools are served locally, with no CDN dependency.
+Close other programs using the serial port. If automatic bootloader entry fails,
+hold BOOT, tap RESET, then release BOOT and reconnect in the installer.
 
-`index.html` is the viewer; `flash.html` is the flasher. Keep `flasher/`,
-`firmware/`, the JavaScript/CSS files and logo alongside these entry points.
-The pages also work when hosted under a subdirectory.
+Native USB is supported on C5/C6/C61/S2/S3/S31. The original ESP32 requires
+a USB-to-UART adapter; C6/C61/S2/S3/S31 also support UART at **2,000,000 baud,
+8N1, no flow control**. See the [firmware README](../esp-sdr/README.md) for wiring,
+flash requirements and chip limits. S2 UART support remains untested on hardware.
 
-## Firmware artifacts
+## Receive controls
 
-Download and extract `esp-sdr-firmware` from the firmware CI workflow. Its root
-contains a combined `manifest.json` and one directory per firmware profile.
-Deploy those contents as this website's `firmware/` directory:
+Available controls follow the firmware's capabilities. Hardware AGC is the
+default; manual gain selects a PHY table index, not an absolute gain in dB.
+The viewer starts at 80 MS/s and 20 MHz bandwidth when supported, with short
+trace averaging. Analog bandwidth is approximate; “Wide open” selects the
+widest filter setting.
 
-```text
-index.html
-flash.html
-flasher/
-firmware/
-  manifest.json
-  esp32c5/*.bin
-  esp32c61/*.bin
-  esp32s3/*.bin
-  esp32s31/*.bin
-```
+Captures have gaps. Sample rate describes each snapshot, not sustained USB/UART
+throughput. Power is uncalibrated dBFS, and browser receive times are not hardware
+timestamps. Extended tuning may show a warning: PLL lock and reception outside
+standard Wi-Fi centers are not guaranteed. Only one client can control the
+radio at a time; disconnect or allow five seconds of idle time before switching.
 
-The flasher fetches the manifest when opened and populates options directly
-from it. It downloads only the selected profile's images when installing, then
-checks sizes and SHA-256 hashes before any flash writes. Chip/flash-size checks
-and device MD5 readback remain in place. Replace the entire firmware folder
-when publishing a release; no website source edits or build commands are needed.
-The checked-in firmware folder contains the current receive-only builds.
+## Development
 
-The bundled upstream esptool-js 0.7.0 supports flashing all four profiles,
-including S31. New firmware options appear from the manifest automatically;
-new transports may still need viewer support. S31 now uses a generic 2 MB layout without PSRAM or Ethernet requirements. See [the artifact contract](../esp-sdr/docs/web-firmware-artifacts.md).
-
-## Connecting
-
-Use either native USB Serial/JTAG or the C6/C61/S3/S31 board's USB-to-UART bridge. UART
-uses 2000000 baud, 8N1, no flow control. Default TX/RX pins are S3: 43/44,
-C6: 16/17, C61: 11/10, and S31: 58/59.
-Native USB ignores the baud setting. Close other software using the serial
-interface. One client owns the radio at a time; disconnect releases it, or
-wait five seconds after an idle client. The viewer retries synchronization if
-opening a serial port resets the board.
-
-## Receive
-
-Hardware AGC is the default. Manual gain remains available; software AGC is
-not supported. Controls, live measurements and operation status stay in the
-viewer; detailed explanations belong in this documentation.
-
-The viewer provides FFT spectrum, waterfall, gain and analog bandwidth controls,
-and software snapshot triggers. Available
-controls depend on firmware capabilities. Snapshot sampling has gaps; nominal RF
-sample rate is not continuous serial throughput; UART delivers fewer samples per second than native USB. Display power is uncalibrated dBFS.
-Wi-Fi/BLE triggers identify candidates, not decoded or CRC-validated packets.
-
-Browser receive times are not hardware timestamps.
-
-## Checks
-
-`node --test tests/*.test.mjs` checks manifest validation and firmware downloads.
-The website workflow runs these checks and optionally packages the unchanged
-static files as an artifact; it does not compile or generate the website.
-
-Typography uses bundled Carlito regular/bold, matching espargos.net. Its SIL
-Open Font License is retained in `fonts.css`; flashing dependency notices live
-in `flasher/vendor/` and are linked from the flasher.
-
-C61 UART0 uses GPIO11 (TX) and GPIO10 (RX), at 2 Mbaud. The browser negotiates the chip and capture size from the protocol-6 identity.
-
-## Receiver capabilities
-
-The viewer reads `LIMITS?` during connection when `CAPS` advertises `RXLIMITS`.
-Gain slider bounds and steps, analog bandwidth in MHz, sample rates and sample
-precision come from the firmware. Each connection starts at 80 MS/s and 20 MHz
-analog bandwidth when supported. Otherwise the viewer uses the highest supported
-rate and the firmware’s bandwidth default (automatic when uncharacterized).
-Manual gain selects a calibrated table index;
-it is not an absolute RF gain in dB. Hardware AGC remains the default.
-
-Analog bandwidth is approximate and chip-specific: C61/S31 support 13–54 MHz,
-S3 supports 13–69 MHz, and “Wide open” selects minimum filter capacitance.
-These are analog passband settings, independent of the sample-rate setting;
-they do not provide arbitrary narrow anti-alias filters for decimated captures.
-C5 supports an approximate 11–23 MHz range measured with its normal digital
-filter; the viewer defaults to 20 MHz and 80 MS/s. Older firmware without `RXLIMITS` uses the range reported by `GAIN?`
-and has no manual MHz control. No raw filter codes are shown in the viewer.
-
-S31 standard ADC-dump firmware provides IQ8/IQ10 snapshots at 80/40/20/10/8/4 MS/s.
-The handshake enables these rates and 10-bit precision; OFDM triggering is
-available at 20 MS/s and above. Older PARLIO firmware remains compatible with
-its advertised 16/8/4 MS/s and IQ8 limits. Serial snapshots have capture gaps.
-
-## ESP32-C6 support
-
-C6 uses the shared serial burst protocol at 2 Mbaud UART. The receiver supports IQ8/IQ10, gain control and nominal 80 MS/s snapshots. Firmware with `TUNEEXT` attempts whole-MHz tuning from 2100–2800 MHz using the direct PLL path; nonstandard Wi-Fi centers show a warning without stopping capture. This is an attempt range, not a guarantee of PLL lock or reception. Older firmware requires an update for extended tuning. The web app uses the firmware's advertised limits; the analog-bandwidth slider supports approximately 12–54 MHz. Lower sample rates remain unavailable on the verified capture path. C6 firmware is included in the installer. Hardware validation used UART on C6 revision 0.1; native USB also passed extended-tuning and IQ8/IQ10 CRC checks.
+Run checks with `node --test tests/*.test.mjs`.
+Bundled dependency licenses are in `flasher/vendor/`; the font license is in
+`fonts.css`. The screenshot comes from the ESPARGOS project documentation.
