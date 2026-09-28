@@ -4,7 +4,7 @@ const s3Channels=Array.from({length:13},(_,i)=>2412+i*5).concat(2484);
 function nearestS3Channel(f){if(radio.family==='ESP32')return Math.max(2412,Math.min(2472,2412+5*Math.round((f-2412)/5)));return s3Channels.reduce((a,b)=>Math.abs(a-f)<=Math.abs(b-f)?a:b);}
 function preferredSampleRate(rates=radio.rxRates){return rates.includes(80000000)?80000000:Math.max(...rates);}
 function applyRadioProfile(){
- $('frequency').min=radio.family==='ESP32'?'2412':'100';$('frequency').max=radio.family==='ESP32'?'2472':'6000';$('frequency').step=radio.family==='ESP32'?'5':'1';
+ $('frequency').min=['ESP32','C3'].includes(radio.family)?'2412':'100';$('frequency').max=radio.family==='ESP32'?'2472':radio.family==='C3'?'2484':'6000';$('frequency').step=radio.family==='ESP32'?'5':'1';
  $('gain').min=radio.gainMin;$('gain').max=radio.gainMax;$('gain').step=radio.gainStep;$('gain').value=Math.min(Math.max(40,radio.gainMin),radio.gainMax);$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;
  $('gainMode').querySelector('[value=HARDWARE]').disabled=!radio.hasHardwareAgc;
  if(!radio.hasGain||(!radio.hasHardwareAgc&&$('gainMode').value==='HARDWARE'))$('gainMode').value='MANUAL';
@@ -77,7 +77,7 @@ for(const b of document.querySelectorAll('[data-freq]'))b.onclick=()=>{$('freque
 for(const id of ['floor','range'])$(id).oninput=()=>{$('floorValue').textContent=$('floor').value+' dBFS';$('rangeValue').textContent=$('range').value+' dB';$('scale').textContent=`${$('floor').value} → ${Number($('floor').value)+Number($('range').value)} dBFS`;clear();};
 $('hold').onchange=()=>{maximum=null;draw();};
 spec.onmousemove=e=>{if(!latest)return;const x=(e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth,i=Math.max(0,Math.min(latest.fft-1,Math.floor(x*latest.fft)));$('cursor').textContent=`${((latest.frequency*1e6+(x-.5)*latest.rate)/1e6).toFixed(5)} MHz · ${latest.spectrum[i].toFixed(1)} dBFS`;};
-spec.onclick=e=>{if(connected&&latest){tuneFrequency=Math.round(latest.frequency+((e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth-.5)*latest.rate/1e6);if(radio.family==='S31')tuneFrequency=Math.max(2300,Math.min(2800,tuneFrequency));if(radio.family==='C61')tuneFrequency=Math.max(2400,Math.min(2500,tuneFrequency));if((radio.family==='ESP32'||radio.family==='S3'||radio.family==='S2'||radio.family==='C6'))tuneFrequency=radio.hasExtendedTune?Math.max(radio.tuneRange[0],Math.min(radio.tuneRange[1],tuneFrequency)):nearestS3Channel(tuneFrequency);$('frequency').value=tuneFrequency;labels();}};
+spec.onclick=e=>{if(connected&&latest){tuneFrequency=Math.round(latest.frequency+((e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth-.5)*latest.rate/1e6);if(radio.family==='S31')tuneFrequency=Math.max(2300,Math.min(2800,tuneFrequency));if(radio.family==='C61')tuneFrequency=Math.max(2400,Math.min(2500,tuneFrequency));if((radio.family==='C3'||radio.family==='ESP32'||radio.family==='S3'||radio.family==='S2'||radio.family==='C6'))tuneFrequency=radio.hasExtendedTune?Math.max(radio.tuneRange[0],Math.min(radio.tuneRange[1],tuneFrequency)):nearestS3Channel(tuneFrequency);$('frequency').value=tuneFrequency;labels();}};
 new ResizeObserver(resize).observe(spec);labels();state();
 
 // Keep a frame-selection boundary for future signal-based triggering.

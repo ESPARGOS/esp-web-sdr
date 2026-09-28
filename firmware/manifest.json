@@ -309,6 +309,50 @@
         }
       ],
       "build_date": "2026-09-28"
+    },
+    "esp32c3": {
+      "revision": "esp32c3",
+      "label": "ESP32-C3 (2 MB or larger)",
+      "target": "esp32c3",
+      "chip": "ESP32-C3",
+      "version": "local-c3-20260928",
+      "flash_size": "2MB",
+      "flash_size_policy": "minimum",
+      "flash_settings": {
+        "flash_mode": "dio",
+        "flash_size": "2MB",
+        "flash_freq": "80m"
+      },
+      "esptool_args": {
+        "after": "hard-reset",
+        "before": "default-reset",
+        "stub": true,
+        "chip": "esp32c3"
+      },
+      "parts": [
+        {
+          "name": "0-bootloader.bin",
+          "offset": 0,
+          "size": 21344,
+          "sha256": "80f94950e24f66e3d378a8f8cad2c6ce33e57db11b1fb875bc3622288f1ac394",
+          "md5": "f0201860098bb13b30da8105d487e641"
+        },
+        {
+          "name": "1-partition-table.bin",
+          "offset": 32768,
+          "size": 3072,
+          "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+          "md5": "5d61d196adc3dba01928f264eb169be7"
+        },
+        {
+          "name": "2-esp_sdr.bin",
+          "offset": 65536,
+          "size": 688672,
+          "sha256": "5844fe4215962c41e67fd51495681e0d10004f33a485e31a06ce5d8deb18b893",
+          "md5": "741cd9d6afede7dd3c148392ae1d110c"
+        }
+      ],
+      "build_date": "2026-09-28"
     }
   }
 }
