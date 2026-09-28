@@ -29,6 +29,8 @@ export async function checkedImages(variant, profile, manifestUrl) {
  const files=[];
  for(const part of variant.parts){
   const url=new URL(`${profile}/${part.name}`,manifestUrl);
+  // Shared caches can retain older binaries at the same path after deployment.
+  url.searchParams.set('sha256',part.sha256);
   const response=await fetch(url,{cache:'no-store'});
   if(!response.ok)throw Error(`Cannot download ${part.name} (${response.status}).`);
   const data=new Uint8Array(await response.arrayBuffer());

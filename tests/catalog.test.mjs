@@ -28,8 +28,24 @@ test('manifest loads on demand; HTTP failures do not fall back to bundled data',
 test('downloads selected images relative to the manifest and verifies them',async t=>{
  const urls=[];t.mock.method(globalThis,'fetch',async(url)=>{urls.push(String(url));return new Response(data);});
  const files=await checkedImages(manifest().variants.esp32s3,'esp32s3','https://example.test/site/firmware/manifest.json');
- assert.deepEqual(urls,['https://example.test/site/firmware/esp32s3/app.bin']);
+ assert.deepEqual(urls,[`https://example.test/site/firmware/esp32s3/app.bin?sha256=${manifest().variants.esp32s3.parts[0].sha256}`]);
  assert.equal(files[0].address,65536);assert.deepEqual(files[0].data,data);
+});
+test('downloads a new build without reusing a stale cached image URL',async t=>{
+ const cached=new Map();
+ t.mock.method(globalThis,'fetch',async url=>{
+  const key=String(url);
+  if(!cached.has(key))cached.set(key,new URL(key).searchParams.get('sha256')===variant.parts[0].sha256?currentData:data);
+  return new Response(cached.get(key));
+ });
+ const variant=manifest().variants.esp32s3;
+ let currentData=data;
+ await checkedImages(variant,'esp32s3','https://example.test/firmware/manifest.json');
+ currentData=new TextEncoder().encode('next firmware');
+ variant.parts[0]={...variant.parts[0],size:currentData.length,sha256:createHash('sha256').update(currentData).digest('hex')};
+ const files=await checkedImages(variant,'esp32s3','https://example.test/firmware/manifest.json');
+ assert.deepEqual(files[0].data,currentData);
+ assert.equal(cached.size,2);
 });
 test('corrupt or missing images fail before they are handed to the writer',async t=>{
  t.mock.method(globalThis,'fetch',async()=>new Response('corrupt'));
