@@ -2,6 +2,7 @@
 const $=id=>document.getElementById(id);
 const s3Channels=Array.from({length:13},(_,i)=>2412+i*5).concat(2484);
 function nearestS3Channel(f){if(radio.family==='ESP32')return Math.max(2412,Math.min(2472,2412+5*Math.round((f-2412)/5)));return s3Channels.reduce((a,b)=>Math.abs(a-f)<=Math.abs(b-f)?a:b);}
+function preferredSampleRate(rates=radio.rxRates){return rates.includes(80000000)?80000000:Math.max(...rates);}
 function applyRadioProfile(){
  $('frequency').min=radio.family==='ESP32'?'2412':'100';$('frequency').max=radio.family==='ESP32'?'2472':'6000';$('frequency').step=radio.family==='ESP32'?'5':'1';
  $('gain').min=radio.gainMin;$('gain').max=radio.gainMax;$('gain').step=radio.gainStep;$('gain').value=Math.min(Math.max(40,radio.gainMin),radio.gainMax);$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;
@@ -9,11 +10,12 @@ function applyRadioProfile(){
  if(!radio.hasGain||(!radio.hasHardwareAgc&&$('gainMode').value==='HARDWARE'))$('gainMode').value='MANUAL';
  for(const [id,rates] of [['rate',radio.rxRates]]){
   for(const o of $(id).options)o.disabled=!rates.includes(Number(o.value));
-  if(!rates.includes(Number($(id).value)))$(id).value=String(rates[0]);
+  $(id).value=String(preferredSampleRate(rates));
  }
- const bandwidth=radio.bandwidthRange;analogBandwidth=bandwidth?bandwidth[3]:0;
+ const bandwidth=radio.bandwidthRange;
+ analogBandwidth=bandwidth?(bandwidth[0]<=20&&bandwidth[1]>=20&&(20-bandwidth[0])%bandwidth[2]===0?20:bandwidth[3]):0;
  $('bandwidthControl').hidden=!bandwidth;
- if(bandwidth){$('bandwidth').min=bandwidth[0];$('bandwidth').max=bandwidth[1];$('bandwidth').step=bandwidth[2];$('bandwidth').value=bandwidth[3]||bandwidth[1];$('bandwidthOpen').checked=bandwidth[3]===0;}
+ if(bandwidth){$('bandwidth').min=bandwidth[0];$('bandwidth').max=bandwidth[1];$('bandwidth').step=bandwidth[2];$('bandwidth').value=analogBandwidth||bandwidth[1];$('bandwidthOpen').checked=analogBandwidth===0;}
  $('rxTrigger').querySelector('[value=wifi]').disabled=!radio.rxRates.some(rate=>[20000000,40000000,80000000].includes(rate));
  if($('rxTrigger').selectedOptions[0].disabled)$('rxTrigger').value='free';
  for(const option of $('bits').options)option.disabled=!radio.sampleBits.includes(Number(option.value));
@@ -24,7 +26,7 @@ function applyRadioProfile(){
  }
  state();labels();
 }
-let connected=false,paused=false,latest=null,trace=null,maximum=null,previous=0,key='',running=false,tuneFrequency=2412,analogBandwidth=0;
+let connected=false,paused=false,latest=null,trace=null,maximum=null,previous=0,key='',running=false,tuneFrequency=2412,analogBandwidth=20;
 const spec=$('spectrum'),water=$('waterfall'),sc=spec.getContext('2d'),wc=water.getContext('2d');
 const lut=Array.from({length:256},(_,i)=>{const stops=[[3,8,23],[18,31,81],[38,63,153],[30,139,181],[66,213,174],[217,237,103],[255,162,61],[255,244,228]];const p=i/255*(stops.length-1),j=Math.min(stops.length-2,Math.floor(p)),t=p-j;return stops[j].map((v,k)=>Math.round(v*(1-t)+stops[j+1][k]*t));});
 async function api(path,body){let value;
@@ -97,8 +99,8 @@ function triggerChanged(){
  $('triggerStatus').textContent=mode==='free'?'Free running':'Armed for matching snapshots';state();labels();
 }
 $('rxTrigger').onchange=()=>{
- if($('rxTrigger').value==='wifi')$('rate').value=String([20000000,40000000,80000000].find(rate=>radio.rxRates.includes(rate)));
- if($('rxTrigger').value==='ble'){$('rate').value=(radio.family==='ESP32'||radio.family==='S3'||radio.family==='C6')?'80000000':'4000000';tuneFrequency=(radio.family==='ESP32'||radio.family==='S3'||radio.family==='C6')&&!radio.hasExtendedTune?nearestS3Channel(Number($('bleChannel').value)):Number($('bleChannel').value);$('frequency').value=tuneFrequency;}
+ if($('rxTrigger').value==='wifi')$('rate').value=String(preferredSampleRate(radio.rxRates.filter(rate=>[20000000,40000000,80000000].includes(rate))));
+ if($('rxTrigger').value==='ble'){$('rate').value=String(preferredSampleRate());tuneFrequency=(radio.family==='ESP32'||radio.family==='S3'||radio.family==='C6')&&!radio.hasExtendedTune?nearestS3Channel(Number($('bleChannel').value)):Number($('bleChannel').value);$('frequency').value=tuneFrequency;}
  triggerChanged();
 };
 $('rxThreshold').onchange=triggerChanged;

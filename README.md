@@ -51,8 +51,7 @@ The checked-in firmware folder contains the current receive-only builds.
 
 The bundled upstream esptool-js 0.7.0 supports flashing all four profiles,
 including S31. New firmware options appear from the manifest automatically;
-new transports may still need viewer support. S31 retains its Function-CoreBoard,
-16 MB flash and Octal PSRAM requirements. See [the artifact contract](../esp-sdr/docs/web-firmware-artifacts.md).
+new transports may still need viewer support. S31 now uses a generic 2 MB layout without PSRAM or Ethernet requirements. See [the artifact contract](../esp-sdr/docs/web-firmware-artifacts.md).
 
 ## Connecting
 
@@ -94,21 +93,24 @@ C61 UART0 uses GPIO11 (TX) and GPIO10 (RX), at 2 Mbaud. The browser negotiates t
 
 The viewer reads `LIMITS?` during connection when `CAPS` advertises `RXLIMITS`.
 Gain slider bounds and steps, analog bandwidth in MHz, sample rates and sample
-precision come from the firmware. Manual gain selects a calibrated table index;
+precision come from the firmware. Each connection starts at 80 MS/s and 20 MHz
+analog bandwidth when supported. Otherwise the viewer uses the highest supported
+rate and the firmware’s bandwidth default (automatic when uncharacterized).
+Manual gain selects a calibrated table index;
 it is not an absolute RF gain in dB. Hardware AGC remains the default.
 
 Analog bandwidth is approximate and chip-specific: C61/S31 support 13–54 MHz,
 S3 supports 13–69 MHz, and “Wide open” selects minimum filter capacitance.
 These are analog passband settings, independent of the sample-rate setting;
 they do not provide arbitrary narrow anti-alias filters for decimated captures.
-C5 stays on its calibrated automatic filter because no verified MHz mapping is
-available. Older firmware without `RXLIMITS` uses the range reported by `GAIN?`
+C5 supports an approximate 11–23 MHz range measured with its normal digital
+filter; the viewer defaults to 20 MHz and 80 MS/s. Older firmware without `RXLIMITS` uses the range reported by `GAIN?`
 and has no manual MHz control. No raw filter codes are shown in the viewer.
 
-S31 snapshots use native 8-bit I/Q at 16, 8 or 4 MS/s. The UI disables 10-bit
-capture and the OFDM trigger, whose detector requires at least 20 MS/s.
-Serial snapshots have gaps while data is transferred; the existing S31
-Ethernet/vendor-USB transports retain their continuous streaming protocol.
+S31 standard ADC-dump firmware provides IQ8/IQ10 snapshots at 80/40/20/10/8/4 MS/s.
+The handshake enables these rates and 10-bit precision; OFDM triggering is
+available at 20 MS/s and above. Older PARLIO firmware remains compatible with
+its advertised 16/8/4 MS/s and IQ8 limits. Serial snapshots have capture gaps.
 
 ## ESP32-C6 support
 
