@@ -25,7 +25,7 @@ class BurstSerialRadio {
     }
    }catch(e){if(this.failed)throw e;}
   }
-  throw Error('SDR synchronization failed. Use ESP-SDR firmware configured for 2 MBaud UART and close other SDR clients.');
+  throw Error('SDR synchronization failed. Unplug your ESP32 device and plug it back in, then try connecting again. Use ESP-SDR firmware configured for 2 MBaud UART and close other SDR clients.');
  }
  async startUartFirmware(){
   // USB/UART bridges wire DTR to GPIO0 and RTS to EN. A previous flasher or
