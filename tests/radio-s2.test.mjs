@@ -48,6 +48,6 @@ for(const bits of [8,10])test(`S2 negotiated odd-length IQ${bits} capture decode
 test('S2 tuning warning clears throughout the normal range after an excursion',()=>{
  const {radio}=makeRadio();radio.applyIdentity('S2SDR 6 burst 12284');
  radio.hasExtendedTune=true;radio.tuneRange=[2212,2813];
- for(const f of [2300,2500])assert.match(radio.frequencyWarning(f),/Tuning will be attempted/);
- for(const f of [2412,2413,2426,2472,2480,2484])assert.equal(radio.frequencyWarning(f),'');
+ for(const f of [2300,2500])assert.match(radio.frequencyWarning(f),/Outside.*ISM/);
+ for(const f of [2400,2402,2412,2413,2426,2472,2480,2483])assert.equal(radio.frequencyWarning(f),'');
 });

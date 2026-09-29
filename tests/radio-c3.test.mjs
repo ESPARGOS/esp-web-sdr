@@ -71,8 +71,8 @@ test('extended C3 tuning attempts exact MHz and warns without blocking capture',
   assert.equal(radio.validFrequency(f),true);await radio.tune(f,20);
   assert.equal(commands.at(-1),f===2100?'BANDWIDTH 20':`FREQ ${f}`);
  }
- for(const f of [2100,2300,2402,2500,2800])assert.match(radio.frequencyWarning(f),/Tuning will be attempted/);
- for(const f of [2412,2413,2426,2480,2484])assert.equal(radio.frequencyWarning(f),'');
+ for(const f of [2100,2300,2484,2500,2800])assert.match(radio.frequencyWarning(f),/Outside.*ISM/);
+ for(const f of [2400,2402,2412,2413,2426,2480,2483])assert.equal(radio.frequencyWarning(f),'');
  for(const f of [2099,2801,5180,2412.5,NaN])assert.equal(radio.validFrequency(f),false);
  await assert.rejects(radio.tune(2801,20),/2100 to 2800/);
 });

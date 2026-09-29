@@ -39,7 +39,7 @@ $('connect').onclick=async()=>{
   loader=candidate;
   $('device').textContent=`${loader.chip.CHIP_NAME} · ${size} · ${await loader.chip.readMac(loader)}`;
   status($('revision').value?'Connected. Select Install ESP-SDR firmware to replace the current firmware.':'Connected. Choose the chip profile before installing.');
- }catch(e){status(`${e.message||e} Close other USB clients; if needed, reconnect while holding BOOT and retry.`,true);try{await disconnect();}catch(_){} }
+ }catch(e){status(`${e.message||e} Close other serial clients; if needed, reconnect while holding BOOT and retry.`,true);try{await disconnect();}catch(_){} }
  finally{busy=false;buttons();}
 };
 $('install').onclick=async()=>{
@@ -86,7 +86,7 @@ async function initialize(){
   if(unavailable.length){const note=document.createElement('p');note.className='muted';note.textContent=unavailable.map(v=>v.chip).join(', ')+': firmware is available, but the bundled browser flasher does not support this chip yet. Use ESP-IDF/esptool with the firmware artifact.';$('revision').after(note);}
   const requestedBoard=new URLSearchParams(location.search).get('board');
   if(requestedBoard&&firmware.variants[requestedBoard]?.browser_supported){$('revision').value=requestedBoard;$('version').textContent=firmwareDate(firmware.variants[requestedBoard]);}
-  status(navigator.serial&&isSecureContext?'Ready.':'This browser needs Web Serial support. Serve this page over HTTPS or localhost.',!(navigator.serial&&isSecureContext));
+  status(navigator.serial&&isSecureContext?'Ready.':'This browser needs WebSerial support. Serve this page over HTTPS or localhost.',!(navigator.serial&&isSecureContext));
  }catch(e){firmware=null;status(`Cannot load firmware: ${e.message} Check that the firmware folder is deployed alongside this website.`,true);}
  buttons();
 }

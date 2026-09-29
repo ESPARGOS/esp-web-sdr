@@ -27,3 +27,11 @@ aside>*{min-width:0}.pair label{min-width:0;flex:1}.charthead{gap:12px;flex-wrap
 aside input:disabled,aside select:disabled{opacity:.5;cursor:not-allowed}#error a{font-size:inherit}
 
 #tuningWarning{background:#44391e;border:1px solid #9c8242;border-radius:7px;padding:12px;margin-bottom:16px;color:#ffe3a0}
+
+/* Fit source links in the display's existing bottom padding without adding height. */
+.display{position:relative}
+.source-links{position:absolute;bottom:1px;left:28px;right:28px;display:flex;justify-content:center;align-items:center;gap:12px;font-size:16px;line-height:22px;white-space:nowrap}
+.source-links a{font-size:inherit;white-space:nowrap;text-underline-offset:2px}
+.source-links a:hover{color:#dee2e6}
+.source-links a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+@media(max-width:850px){.source-links{bottom:0;left:12px;right:12px;gap:8px;line-height:18px}}

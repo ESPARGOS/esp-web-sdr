@@ -1,5 +1,5 @@
 {
   "profile": "esp32s31",
-  "version": "s31-adc-20260928",
+  "version": "tuning-20260929",
   "idf_commit": "26dd2948925d44f41e3bb614fb044b7a0839a242"
 }

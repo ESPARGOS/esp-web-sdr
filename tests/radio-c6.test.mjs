@@ -61,7 +61,7 @@ test('extended C6 tuning sends exact MHz and warns without blocking capture',asy
  const commands=[];radio.command=async c=>commands.push(c);radio.line=async()=> 'OK';
  for(const f of [2100,2390,2402,2413,2426,2480,2500,2800]){
   assert.equal(radio.validFrequency(f),true);
-  if(f<2412||f>2484)assert.match(radio.frequencyWarning(f),/Tuning will be attempted/);
+  if(f<2400||f>2483.5)assert.match(radio.frequencyWarning(f),/Outside.*ISM/);
   else assert.equal(radio.frequencyWarning(f),'');
   await radio.tune(f);assert.equal(commands.at(-1),'FREQ '+f);assert.equal(radio.frequency,f);
  }
@@ -70,10 +70,10 @@ test('extended C6 tuning sends exact MHz and warns without blocking capture',asy
  for(const f of [2099,2801,5180,2412.5,NaN,Infinity])await assert.rejects(radio.tune(f),/whole-MHz/);
  assert.equal(commands.length,count);
 });
-test('old C6 firmware requires an update and rejected tuning does not change cached frequency',async()=>{
+test('old C6 firmware requires an update and device-rejected tuning invalidates the cache',async()=>{
  const {radio}=makeRadio();radio.applyIdentity('C6SDR 6 burst 16380');radio.port={};
  const commands=[];radio.command=async c=>commands.push(c);radio.line=async()=>{throw Error('ERR command');};
  await assert.rejects(radio.tune(2402),/updated firmware/);assert.equal(commands.length,0);
  radio.hasExtendedTune=true;radio.tuneRange=[2100,2800];radio.frequency=2412;
- await assert.rejects(radio.tune(2402),/ERR command/);assert.equal(radio.frequency,2412);
+ await assert.rejects(radio.tune(2402),/ERR command/);assert.equal(radio.frequency,null);
 });

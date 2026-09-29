@@ -11,6 +11,12 @@ li+li{margin-top:4px}
 section{background:#293135;border:1px solid #394348;border-radius:10px;padding:16px;margin:12px 0}
 section>:last-child{margin-bottom:0}
 a{color:#37c964}
+.source-footer{margin-top:16px;padding-top:12px;border-top:1px solid #394348;font-size:16px}
+.source-footer nav{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px 16px}
+.source-footer span{color:#adb8bd}
+.source-footer a{white-space:nowrap;text-underline-offset:3px}
+.source-footer a:hover{color:#dee2e6}
+.source-footer a:focus-visible{outline:2px solid #37c964;outline-offset:4px}
 button{font:inherit;padding:8px 14px;border:0;border-radius:7px;background:#37c964;color:#11191e;font-weight:700;cursor:pointer}
 select{display:block;width:100%;font:inherit;padding:8px 10px;margin-top:4px;background:#11191e;color:#dee2e6;border:1px solid #617079;border-radius:7px}
 button:disabled{opacity:.45;cursor:default}

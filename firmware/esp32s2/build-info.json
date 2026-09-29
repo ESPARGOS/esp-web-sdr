@@ -1,5 +1,5 @@
 {
   "profile": "esp32s2",
-  "version": "s2-usb-uart",
+  "version": "tuning-20260929",
   "idf_commit": "25fe69f946311abdaf9ad56591f25fedbc20ac98"
 }

@@ -1,5 +1,7 @@
 # ESP-WebSDR
 
+<img src="docs/espargos-logo.png" width="40%" align="right" alt="ESPARGOS logo">
+
 Browser spectrum viewer and firmware installer for ESP32 chips, with live
 FFT spectra, waterfalls, tuning, gain and bandwidth controls.
 
@@ -49,3 +51,13 @@ switching clients.
 Run checks with `node --test tests/*.test.mjs`.
 Bundled dependency licenses are in `flasher/vendor/`; the font license is in
 `fonts.css`.
+
+## Extended tuning
+
+Current firmware accepts 100–6000 MHz in 1 MHz steps on every supported chip.
+The viewer reads the range from the connected firmware, including C61 and
+original ESP32. Older firmware keeps its advertised range.
+
+The viewer displays a non-blocking warning outside the 2400–2483.5 MHz ISM band;
+C5 also suppresses the warning throughout its 5150–5895 MHz Wi-Fi band. Actual tuning and reception across
+the expanded range require hardware testing.

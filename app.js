@@ -1,10 +1,8 @@
 'use strict';
 const $=id=>document.getElementById(id);
-const s3Channels=Array.from({length:13},(_,i)=>2412+i*5).concat(2484);
-function nearestS3Channel(f){if(radio.family==='ESP32')return Math.max(2412,Math.min(2472,2412+5*Math.round((f-2412)/5)));return s3Channels.reduce((a,b)=>Math.abs(a-f)<=Math.abs(b-f)?a:b);}
 function preferredSampleRate(rates=radio.rxRates){return rates.includes(80000000)?80000000:Math.max(...rates);}
 function applyRadioProfile(){
- $('frequency').min=radio.family==='ESP32'?'2412':'100';$('frequency').max=radio.family==='ESP32'?'2472':'6000';$('frequency').step=radio.family==='ESP32'?'5':'1';
+ const tuning=radio.frequencyInput();$('frequency').min=tuning.min;$('frequency').max=tuning.max;$('frequency').step=tuning.step;
  $('gain').min=radio.gainMin;$('gain').max=radio.gainMax;$('gain').step=radio.gainStep;$('gain').value=Math.min(Math.max(40,radio.gainMin),radio.gainMax);$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;
  $('gainMode').querySelector('[value=HARDWARE]').disabled=!radio.hasHardwareAgc;
  if(!radio.hasGain||(!radio.hasHardwareAgc&&$('gainMode').value==='HARDWARE'))$('gainMode').value='MANUAL';
@@ -51,7 +49,27 @@ function render(f){const k=[f.frequency,f.rate,f.bits,f.fft,f.bandwidth,f.gainMo
 wc.drawImage(water,0,0,water.width,water.height-1,0,1,water.width,water.height-1);const row=wc.createImageData(water.width,1),floor=Number($('floor').value),range=Number($('range').value);
 for(let x=0;x<water.width;x++){const lo=Math.floor(x*f.fft/water.width),hi=Math.max(lo+1,Math.floor((x+1)*f.fft/water.width));let v=-140;for(let j=lo;j<hi;j++)v=Math.max(v,f.spectrum[Math.min(j,f.fft-1)]);const c=lut[Math.max(0,Math.min(255,Math.round((v-floor)/range*255)))];row.data.set([...c,255],x*4);}wc.putImageData(row,0,0);
 $('gainStatus').textContent=f.gain_actual?.mode==='HARDWARE'?'Hardware AGC':f.gain_actual?`Manual · index ${f.gain_actual.index}`:'Update SDR firmware for gain control.';$('empty').hidden=true;labels(f);const now=performance.now();$('fps').textContent=previous?(1000/(now-previous)).toFixed(1):'—';previous=now;$('throughput').textContent=f.delivered_ksps.toFixed(1);$('latency').textContent=f.elapsed_ms.toFixed(1);$('peak').textContent=(f.peak_hz/1e6).toFixed(4);$('crc').textContent=`CRC OK · #${f.sequence}`;}
-async function loop(){if(running)return;running=true;try{while(connected){if(paused){await new Promise(r=>setTimeout(r,100));continue;}try{const f=await(await api('frame',config())).json();if(connected&&!paused){if(selectRxFrame(f)){render(f);}}error('');}catch(e){paused=true;if(radio.failed){connected=false;await radio.run(()=>radio.close()).catch(()=>{});}state();error(e,true);}await new Promise(r=>setTimeout(r,10));}}finally{running=false;}}
+async function loop(){
+ if(running)return;
+ running=true;
+ try{
+  while(connected&&!paused){
+   try{
+    const f=await(await api('frame',config())).json();
+    if(connected&&!paused&&selectRxFrame(f))render(f);
+    error('');
+   }catch(e){
+    paused=true;
+    const disconnected=!!radio.failed;
+    if(disconnected){connected=false;await radio.run(()=>radio.close()).catch(()=>{});}
+    state();
+    error(disconnected?e:`${e?.message||e} Change the settings and select Resume.`,disconnected);
+    break;
+   }
+   if(connected&&!paused)await new Promise(r=>setTimeout(r,10));
+  }
+ }finally{running=false;}
+}
 function state(){
  const warning=connected?radio.frequencyWarning(tuneFrequency):'';$('tuningWarning').textContent=warning;$('tuningWarning').hidden=!warning;
  for(const control of document.querySelectorAll('aside input,aside select'))control.disabled=!connected;
@@ -60,7 +78,7 @@ function state(){
  $('connect').textContent=connected?'Disconnect':'Connect ESP-SDR';$('light').classList.toggle('on',connected&&!paused);
  $('pause').disabled=!connected;$('pause').textContent=paused?'Resume':'Pause';
  
- for(const b of document.querySelectorAll('[data-freq]'))b.disabled=!connected||!radio.validFrequency(+b.dataset.freq);
+ for(const b of document.querySelectorAll('[data-freq]'))b.disabled=!connected||(+b.dataset.freq===5500&&radio.family!=='C5')||!radio.validFrequency(+b.dataset.freq);
  $('gainMode').querySelector('[value=HARDWARE]').disabled=connected&&!radio.hasHardwareAgc;$('gainMode').disabled=!connected||!radio.hasGain;
  $('gain').disabled=!connected||$('gainMode').value!=='MANUAL'||!radio.hasGain;
  $('bandwidthOpen').disabled=!connected||!radio.bandwidthRange;$('bandwidth').disabled=!connected||!radio.bandwidthRange||$('bandwidthOpen').checked;
@@ -69,7 +87,7 @@ function bandwidthChanged(){if(!$('bandwidthOpen').checked&&!$('bandwidth').chec
 $('bandwidthOpen').onchange=()=>{state();bandwidthChanged();};$('bandwidth').onchange=bandwidthChanged;
 $('gainMode').onchange=()=>{state();clear();};$('gain').oninput=()=>{$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;clear();};
 $('connect').onclick=async()=>{$('connect').disabled=true;try{if(connected){connected=false;state();await api('disconnect',{});}else{await api('connect',{});applyRadioProfile();connected=true;paused=false;previous=0;latest=null;clear();loop();}error('');}catch(e){error(e,!['NotFoundError','AbortError'].includes(e?.name));}finally{$('connect').disabled=false;state();}};
-$('pause').onclick=()=>{paused=!paused;previous=0;state();};$('clear').onclick=clear;
+$('pause').onclick=()=>{paused=!paused;previous=0;state();if(!paused){error('');loop();}};$('clear').onclick=clear;
 for(const id of ['rate','bits','fft'])$(id).onchange=()=>{labels();};
 $('frequency').onchange=()=>{tuneFrequency=Number($('frequency').value);labels();};
 $('frequency').onkeydown=e=>{if(e.key==='Enter')$('frequency').blur();};
@@ -77,7 +95,7 @@ for(const b of document.querySelectorAll('[data-freq]'))b.onclick=()=>{$('freque
 for(const id of ['floor','range'])$(id).oninput=()=>{$('floorValue').textContent=$('floor').value+' dBFS';$('rangeValue').textContent=$('range').value+' dB';$('scale').textContent=`${$('floor').value} → ${Number($('floor').value)+Number($('range').value)} dBFS`;clear();};
 $('hold').onchange=()=>{maximum=null;draw();};
 spec.onmousemove=e=>{if(!latest)return;const x=(e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth,i=Math.max(0,Math.min(latest.fft-1,Math.floor(x*latest.fft)));$('cursor').textContent=`${((latest.frequency*1e6+(x-.5)*latest.rate)/1e6).toFixed(5)} MHz · ${latest.spectrum[i].toFixed(1)} dBFS`;};
-spec.onclick=e=>{if(connected&&latest){tuneFrequency=Math.round(latest.frequency+((e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth-.5)*latest.rate/1e6);if(radio.family==='S31')tuneFrequency=Math.max(2300,Math.min(2800,tuneFrequency));if(radio.family==='C61')tuneFrequency=Math.max(2400,Math.min(2500,tuneFrequency));if((radio.family==='C3'||radio.family==='ESP32'||radio.family==='S3'||radio.family==='S2'||radio.family==='C6'))tuneFrequency=radio.hasExtendedTune?Math.max(radio.tuneRange[0],Math.min(radio.tuneRange[1],tuneFrequency)):nearestS3Channel(tuneFrequency);$('frequency').value=tuneFrequency;labels();}};
+spec.onclick=e=>{if(connected&&latest){tuneFrequency=radio.nearestFrequency(latest.frequency+((e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth-.5)*latest.rate/1e6);$('frequency').value=tuneFrequency;labels();}};
 new ResizeObserver(resize).observe(spec);labels();state();
 
 // Keep a frame-selection boundary for future signal-based triggering.
