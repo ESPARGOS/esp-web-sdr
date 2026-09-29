@@ -2,6 +2,9 @@ import {ESPLoader,Transport} from './vendor/esptool-js-0.7.0.js';
 import {loadManifest,checkedImages,firmwareDate} from './catalog.mjs';
 const $=id=>document.getElementById(id);
 const manifestUrl=new URL('../firmware/manifest.json',import.meta.url);
+const UART_BAUDRATE=2000000;
+const UART_SPEED_WARNING='UART too slow for ESP-WebSDR, choose a different dev kit';
+class UartSpeedError extends Error {constructor(){super(UART_SPEED_WARNING);}}
 let firmware=null;
 let loader=null,transport=null,busy=false,detectedFlashSize=null;
 function flashMatches(variant, detected) {
@@ -14,6 +17,11 @@ function selectedFirmware(){const variant=firmware.variants[$('revision').value]
 // esptool-js 0.7.0 inherits C6 SPI_REG_BASE (0x60002000) for C5.
 // Espressif esptool targets/esp32c5.py specifies 0x60003000 for C5.
 class SDRLoader extends ESPLoader {
+ async changeBaud(){
+  const requiresUartSpeed=this.baudrate===UART_BAUDRATE;
+  try{await super.changeBaud();}
+  catch(e){if(requiresUartSpeed)throw new UartSpeedError();throw e;}
+ }
  async detectChip(...args){
   await super.detectChip(...args);
   if(!Object.values(firmware.variants).some(v=>v.browser_supported!==false&&v.chip===this.chip.CHIP_NAME))throw Error('Wrong chip: no matching firmware is packaged.');
@@ -31,15 +39,19 @@ $('connect').onclick=async()=>{
  busy=true;buttons();$('log').textContent='';status('Select your ESP32 device.');
  try{
   const port=await navigator.serial.requestPort();
+  const uart=port.getInfo().usbVendorId!==0x303a;
   transport=new Transport(port,false);
-  const candidate=new SDRLoader({transport,baudrate:115200,terminal:{clean(){},write:log,writeLine:s=>log(s+'\n')}});
+  const candidate=new SDRLoader({transport,baudrate:uart?UART_BAUDRATE:115200,terminal:{clean(){},write:log,writeLine:s=>log(s+'\n')}});
   status('Connecting to the bootloader…');await candidate.main();
+  // The bundled loader can recover from a failed speed change at ROM speed.
+  // Never enable UART flashing after that fallback (or a skipped speed change).
+  if(uart&&transport.baudrate!==UART_BAUDRATE)throw new UartSpeedError();
   if(!Object.values(firmware.variants).some(v=>v.browser_supported!==false&&v.chip===candidate.chip.CHIP_NAME))throw Error('Wrong chip: no matching firmware is packaged.');
   const size=await candidate.detectFlashSize();if(!Object.values(firmware.variants).some(v=>v.browser_supported!==false&&v.chip===candidate.chip.CHIP_NAME&&flashMatches(v,size)))throw Error(`Detected ${size} flash; no packaged board matches this chip and flash size.`);detectedFlashSize=size;
   loader=candidate;
   $('device').textContent=`${loader.chip.CHIP_NAME} · ${size} · ${await loader.chip.readMac(loader)}`;
   status($('revision').value?'Connected. Select Install ESP-SDR firmware to replace the current firmware.':'Connected. Choose the chip profile before installing.');
- }catch(e){status(`${e.message||e} Close other serial clients; if needed, reconnect while holding BOOT and retry.`,true);try{await disconnect();}catch(_){} }
+ }catch(e){status(e instanceof UartSpeedError?e.message:`${e.message||e} Close other serial clients; if needed, reconnect while holding BOOT and retry.`,true);try{await disconnect();}catch(_){} }
  finally{busy=false;buttons();}
 };
 $('install').onclick=async()=>{
