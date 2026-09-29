@@ -18,3 +18,17 @@ UART connections synchronize at the ROM's 115200 baud, then must switch to
 speed or cannot change speed, the installer disconnects and displays
 "UART too slow for ESP-WebSDR, choose a different dev kit". Native Espressif USB
 ports (USB vendor ID 0x303a) are exempt from this UART requirement.
+
+After verification, the installer requests a reset and releases the serial
+port. Native USB Serial/JTAG on C3 and C61 uses a watchdog reset; other
+connections receive an RTS reset pulse with DTR released. USB devices may
+re-enumerate under a different port name. Reset failures leave the verified
+installation marked as successful and show manual restart instructions.
+
+The C61 sequence uses the LP watchdog addresses from Espressif's
+[C6 target](https://github.com/espressif/esptool/blob/master/esptool/targets/esp32c6.py)
+and the watchdog reset enabled by its
+[C61 target](https://github.com/espressif/esptool/blob/master/esptool/targets/esp32c61.py).
+The bundled JavaScript loader inherits C3 addresses for C61, so the installer
+supplies this sequence in `reset.mjs`. C6 uses RTS because upstream disables
+its watchdog reset due to a USB controller issue.

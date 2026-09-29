@@ -5,11 +5,11 @@ function crc32(bytes){let c=0xffffffff;for(const b of bytes)c=CRC_TABLE[(c^b)&25
 function fft(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]];}}for(let len=2;len<=n;len*=2){const a=-2*Math.PI/len,cr=Math.cos(a),ci=Math.sin(a);for(let i=0;i<n;i+=len){let wr=1,wi=0;for(let j=0;j<len/2;j++){const k=i+j,l=k+len/2,tr=re[l]*wr-im[l]*wi,ti=re[l]*wi+im[l]*wr;re[l]=re[k]-tr;im[l]=im[k]-ti;re[k]+=tr;im[k]+=ti;const next=wr*cr-wi*ci;wi=wr*ci+wi*cr;wr=next;}}}}
 function spectrum(iq,n){const sums=new Float64Array(n),window=Float64Array.from({length:n},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(n-1))),norm=window.reduce((a,b)=>a+b,0)**2,blocks=Math.floor(iq.length/2/n);for(let b=0;b<blocks;b++){const re=new Float64Array(n),im=new Float64Array(n);let mi=0,mq=0;for(let j=0;j<n;j++){mi+=iq[2*(b*n+j)];mq+=iq[2*(b*n+j)+1];}mi/=n;mq/=n;for(let j=0;j<n;j++){re[j]=(iq[2*(b*n+j)]-mi)*window[j];im[j]=(iq[2*(b*n+j)+1]-mq)*window[j];}fft(re,im);for(let j=0;j<n;j++)sums[j]+=(re[j]**2+im[j]**2)/norm/blocks;}return Array.from({length:n},(_,j)=>10*Math.log10(Math.max(1e-14,sums[(j+n/2)%n])));}
 class BurstSerialRadio {
- constructor(){this.maxSamples=16380;this.gainMin=0;this.gainMax=0;this.gainStep=1;this.bandwidthRange=null;this.sampleBits=[8,10];this.family="C5";this.hasExtendedTune=false;this.tuneRange=null;this.rxRates=[80000000,40000000,20000000,10000000,8000000,4000000];this.port=null;this.queue=[];this.queued=0;this.wake=null;this.reader=null;this.writer=null;this.failed=null;this.tail=Promise.resolve();this.sequence=0;this.last=null;this.frequency=null;this.filter=null;this.analogFilter=null;this.bandwidth=null;this.gainSetting=null;}
+ constructor(){this.maxSamples=16380;this.captureSamples=null;this.droppedCaptures=0;this.baudRate=2000000;this.transport=null;this.supportsBaudChange=false;this.changingBaud=false;this.gainMin=0;this.gainMax=0;this.gainStep=1;this.bandwidthRange=null;this.sampleBits=[8,10];this.family="C5";this.hasExtendedTune=false;this.tuneRange=null;this.rxRates=[80000000,40000000,20000000,10000000,8000000,4000000];this.port=null;this.queue=[];this.queued=0;this.wake=null;this.reader=null;this.writer=null;this.failed=null;this.tail=Promise.resolve();this.sequence=0;this.last=null;this.frequency=null;this.filter=null;this.analogFilter=null;this.bandwidth=null;this.gainSetting=null;}
  run(f){const p=this.tail.then(f);this.tail=p.catch(()=>{});return p;}
  async pump(){try{for(;;){const {value,done}=await this.reader.read();if(done)break;if(value){this.queue.push(value);this.queued+=value.length;if(this.queued>2*1024*1024)throw Error('WebSerial receive queue overflow');if(this.wake)this.wake();}}}catch(e){this.failed=e;}finally{this.failed ||= Error('WebSerial disconnected');if(this.wake)this.wake();}}
- async read(n,deadline=performance.now()+5000){const out=new Uint8Array(n);let offset=0;while(offset<n){if(this.queued){const b=this.queue[0],k=Math.min(n-offset,b.length);out.set(b.subarray(0,k),offset);offset+=k;this.queued-=k;if(k===b.length)this.queue.shift();else this.queue[0]=b.subarray(k);continue;}if(this.failed)throw this.failed;const ms=deadline-performance.now();if(ms<=0)throw Error('WebSerial response timed out');await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.wake=null;reject(Error('WebSerial response timed out'));},ms);this.wake=()=>{clearTimeout(timer);this.wake=null;resolve();};});}return out;}
- async line(prefix=''){let s='',end=performance.now()+5000;for(let j=0;j<256;j++){const b=(await this.read(1,end))[0];if(b===10){s=s.trim();if(!s.startsWith(prefix))throw Error(s||'Empty WebSerial response');return s;}s+=String.fromCharCode(b);}throw Error('Invalid WebSerial header');}
+ async read(n,deadline=performance.now()+5000,idleMs=Infinity){let idleDeadline=performance.now()+idleMs;const out=new Uint8Array(n);let offset=0;while(offset<n){if(this.queued){const b=this.queue[0],k=Math.min(n-offset,b.length);out.set(b.subarray(0,k),offset);offset+=k;this.queued-=k;idleDeadline=performance.now()+idleMs;if(k===b.length)this.queue.shift();else this.queue[0]=b.subarray(k);continue;}if(this.failed)throw this.failed;const ms=Math.min(deadline,idleDeadline)-performance.now();if(ms<=0)throw Object.assign(Error('WebSerial response timed out'),{code:'SERIAL_TIMEOUT'});await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.wake=null;reject(Object.assign(Error('WebSerial response timed out'),{code:'SERIAL_TIMEOUT'}));},ms);this.wake=()=>{clearTimeout(timer);this.wake=null;resolve();};});}return out;}
+ async line(prefix=''){let s='',end=performance.now()+5000;for(let j=0;j<256;j++){const b=(await this.read(1,end))[0];if(b===10){s=s.trim();if(!s.startsWith(prefix))throw Error(s||'Empty WebSerial response');return s;}s+=String.fromCharCode(b);}throw Object.assign(Error('Invalid WebSerial header'),{code:'CAPTURE_DAMAGED'});}
  async command(s){await this.writer.write(new TextEncoder().encode(s+'\n'));}
  async synchronize(){
   // Opening a UART bridge or native serial port can reset the board. A command
@@ -25,7 +25,7 @@ class BurstSerialRadio {
     }
    }catch(e){if(this.failed)throw e;}
   }
-  throw Error('SDR synchronization failed. Unplug your ESP32 device and plug it back in, then try connecting again. Use ESP-SDR firmware configured for 2 MBaud UART and close other SDR clients.');
+  throw Error('SDR synchronization failed. Unplug your ESP32 device and plug it back in, then try connecting again. Check the UART baud setting, install ESP-SDR firmware, and close other SDR clients.');
  }
  async startUartFirmware(){
   // USB/UART bridges wire DTR to GPIO0 and RTS to EN. A previous flasher or
@@ -37,12 +37,77 @@ class BurstSerialRadio {
   try{await new Promise(resolve=>setTimeout(resolve,100));}
   finally{await this.port.setSignals({dataTerminalReady:false,requestToSend:false});}
  }
- async connect({baudRate=2000000}={}){if(!navigator.serial)throw Error('WebSerial support is required in this browser.');if(!isSecureContext)throw Error('Serve this page over HTTPS or localhost.');const p=await navigator.serial.requestPort();return this.run(async()=>{await this.close();this.port=p;try{try{await p.open({baudRate,bufferSize:131072,flowControl:'none'});}catch(e){throw Error(`${e.message || e} If you just flashed this device for the first time, unplug it and plug it back in, then try connecting again.`,{cause:e});}this.reader=p.readable.getReader();this.writer=p.writable.getWriter();this.queue=[];this.queued=0;this.failed=null;this.pumping=this.pump();await this.startUartFirmware();await this.synchronize();await this.command('INFO');this.identity=await this.line();this.applyIdentity(this.identity);await this.command('CAPS');const caps=await this.line();if(this.family==='S3')this.rxRates=[80000000,...(caps.split(' ').includes('RX40')?[40000000]:[]),...(caps.split(' ').includes('RX16')?[16000000]:[])];this.hasSerialLease=caps.split(' ').some(c=>c==='SERIALLEASE'||c==='DUALSERIAL');this.hasExtendedTune=caps.split(' ').includes('TUNEEXT');this.tuneRange=null;if(this.hasExtendedTune){await this.command('RANGE?');const h=(await this.line('RANGE ')).split(' '),lo=Number(h[1]),hi=Number(h[2]);if(h.length!==4||!Number.isInteger(lo)||!Number.isInteger(hi)||lo<100||hi>6000||lo>=hi||h[3]!=='1')throw Error('Invalid tuning range');this.tuneRange=[lo,hi];}this.hasAnalogFilter=caps.split(' ').includes('LPFANA');this.hasAnalogBandwidth=this.family!=='S3'&&caps.split(' ').includes('ALPF');this.hasFilter12=this.family!=='S3'&&caps.split(' ').includes('LPF12');this.hasFilter=caps.split(' ').includes('LPF')||this.hasAnalogFilter;this.hasGain=caps.split(' ').includes('GAIN');this.hasHardwareAgc=caps.split(' ').includes('HWAGC');if(caps.split(' ').includes('RXLIMITS')){await this.command('LIMITS?');this.applyLimits(await this.line('LIMITS '));}else{await this.command('GAIN?');const g=(await this.line('GAIN ')).split(' ');this.applyLimits('LIMITS '+JSON.stringify({gain:[Number(g[3]),Number(g[4]),1],bandwidth:null,rates:this.rxRates,bits:[8,10]}));}this.deviceName=this.family==='ESP32'?'ESP32':'ESP32-'+this.family;return {identity:this.identity,port:this.deviceName,family:this.family,filter:this.hasFilter};}catch(e){await this.close();throw e;}});}
+ async openPort(port,baudRate){
+  this.port=port;
+  await port.open({baudRate,bufferSize:131072,flowControl:'none'});
+  this.baudRate=baudRate;this.reader=port.readable.getReader();this.writer=port.writable.getWriter();
+  this.queue=[];this.queued=0;this.failed=null;this.pumping=this.pump();
+ }
+ async closePort(){
+  if(this.reader){await this.reader.cancel().catch(()=>{});await this.pumping;this.reader.releaseLock();this.reader=null;}
+  if(this.writer){this.writer.releaseLock();this.writer=null;}
+  if(this.port){await this.port.close().catch(()=>{});this.port=null;}
+  this.frequency=null;this.filter=null;this.analogFilter=null;this.bandwidth=null;this.gainSetting=null;this.last=null;
+ }
+ async connectPort(port,baudRate,reset=true){
+  // Only an initial connection resets the board. A baud switch must preserve
+  // the running firmware and its volatile UART rate.
+  const rates=port.getInfo?.().usbVendorId===0x303a?[baudRate]:[...new Set([baudRate,2000000,1000000])];
+  let failure;
+  for(const rate of rates){
+   try{
+    await this.openPort(port,rate);
+    if(reset)await this.startUartFirmware();
+    else{
+     // Release EN (RTS) before GPIO0 (DTR): sequential signal updates in
+     // the opposite order can reset the board and lose its runtime baud.
+     await port.setSignals({requestToSend:false});
+     await port.setSignals({dataTerminalReady:false});
+    }
+    await this.synchronize();return;
+   }
+   catch(e){failure=e;await this.closePort();}
+  }
+  throw failure;
+ }
+ async connect({baudRate=2000000}={}){
+  if(!navigator.serial)throw Error('WebSerial support is required in this browser.');
+  if(!isSecureContext)throw Error('Serve this page over HTTPS or localhost.');
+  const port=await navigator.serial.requestPort();
+  return this.run(async()=>{
+   await this.close();
+   try{await this.connectPort(port,baudRate);return await this.negotiate();}
+   catch(e){await this.close();throw e;}
+  });
+ }
+ async negotiate(){await this.command('INFO');this.identity=await this.line();this.applyIdentity(this.identity);await this.command('CAPS');const caps=await this.line();this.supportsBaudChange=false;this.transport=null;if(caps.split(' ').includes('UARTBAUD')){await this.command('TRANSPORT?');const t=/^TRANSPORT (UART|USB) (\d+)$/.exec(await this.line());if(!t||(t[1]==='UART'?Number(t[2])!==this.baudRate:Number(t[2])!==0))throw Error('Invalid serial transport response');this.transport=t[1];this.supportsBaudChange=this.transport==='UART';}if(this.family==='S3')this.rxRates=[80000000,...(caps.split(' ').includes('RX40')?[40000000]:[]),...(caps.split(' ').includes('RX16')?[16000000]:[])];this.hasSerialLease=caps.split(' ').some(c=>c==='SERIALLEASE'||c==='DUALSERIAL');this.hasExtendedTune=caps.split(' ').includes('TUNEEXT');this.tuneRange=null;if(this.hasExtendedTune){await this.command('RANGE?');const h=(await this.line('RANGE ')).split(' '),lo=Number(h[1]),hi=Number(h[2]);if(h.length!==4||!Number.isInteger(lo)||!Number.isInteger(hi)||lo<100||hi>6000||lo>=hi||h[3]!=='1')throw Error('Invalid tuning range');this.tuneRange=[lo,hi];}this.hasAnalogFilter=caps.split(' ').includes('LPFANA');this.hasAnalogBandwidth=this.family!=='S3'&&caps.split(' ').includes('ALPF');this.hasFilter12=this.family!=='S3'&&caps.split(' ').includes('LPF12');this.hasFilter=caps.split(' ').includes('LPF')||this.hasAnalogFilter;this.hasGain=caps.split(' ').includes('GAIN');this.hasHardwareAgc=caps.split(' ').includes('HWAGC');if(caps.split(' ').includes('RXLIMITS')){await this.command('LIMITS?');this.applyLimits(await this.line('LIMITS '));}else{await this.command('GAIN?');const g=(await this.line('GAIN ')).split(' ');this.applyLimits('LIMITS '+JSON.stringify({gain:[Number(g[3]),Number(g[4]),1],bandwidth:null,rates:this.rxRates,bits:[8,10]}));}this.deviceName=this.family==='ESP32'?'ESP32':'ESP32-'+this.family;return {identity:this.identity,port:this.deviceName,family:this.family,filter:this.hasFilter};}
+ async setBaudRate(baudRate){return this.run(async()=>{
+  this.changingBaud=true;
+  try{
+   if(!this.port||!this.supportsBaudChange||this.transport!=='UART')throw Error('Update ESP-SDR firmware to enable UART baud changes.');
+   if(![1000000,2000000].includes(baudRate))throw Error('Choose 1 or 2 MBaud.');
+   if(baudRate===this.baudRate)return;
+   const port=this.port;
+   await this.synchronize();
+   await this.command(`BAUD ${baudRate}`);
+   let acknowledgement;
+   try{acknowledgement=await this.line();}catch(e){
+    // The ACK can itself lose bytes. Probe the port at both rates below.
+    if(e.code!=='SERIAL_TIMEOUT'&&e.code!=='CAPTURE_DAMAGED')throw e;
+   }
+   if(acknowledgement?.startsWith('ERR '))throw Error(acknowledgement);
+   // Do not send LPF/RELEASE here: the device may already use the new baud.
+   await this.closePort();
+   try{await this.connectPort(port,baudRate,false);await this.negotiate();}
+   catch(e){await this.close();throw e;}
+   if(this.transport!=='UART'||this.baudRate!==baudRate)throw Error('The device did not retain the requested baud rate; it may have reset during port reopen. The default connection was recovered.');
+  }catch(e){if(this.failed)await this.close();throw e;}finally{this.changingBaud=false;}
+ });}
  applyIdentity(identity){
   const m=/^(ESP32|C3|C5|C6|C61|S2|S3|S31)SDR 6 burst (\d+)$/.exec(identity);
   const n=m?Number(m[2]):0;
   if(!m||!Number.isInteger(n)||n<4096||n>16384)throw Error('Unsupported SDR firmware: '+identity);
-  this.family=m[1];this.maxSamples=n;
+  this.family=m[1];this.maxSamples=n;this.captureSamples=null;this.droppedCaptures=0;
   this.rxRates=this.family==='ESP32'?[80000000,40000000,16000000]:this.family==='S31'?[16000000,8000000,4000000]:(this.family==='C3'||this.family==='S3'||this.family==='S2'||this.family==='C6')?[80000000]:[80000000,40000000,20000000,10000000,8000000,4000000];
  }
  applyLimits(line){
@@ -52,7 +117,7 @@ class BurstSerialRadio {
   if(!line.startsWith('LIMITS ')||!range(g,127)||!(b===null||(Array.isArray(b)&&b.length===4&&range(b.slice(0,3),1000)&&b[0]>0&&Number.isInteger(b[3])&&(b[3]===0||(b[3]>=b[0]&&b[3]<=b[1]&&(b[3]-b[0])%b[2]===0))))||!Array.isArray(rates)||!rates.length||rates.some(r=>![80000000,40000000,20000000,10000000,8000000,4000000,16000000].includes(r))||new Set(rates).size!==rates.length||!Array.isArray(bits)||!bits.length||bits.some(b=>![8,10].includes(b))||new Set(bits).size!==bits.length)throw Error('Invalid receiver limits');
   [this.gainMin,this.gainMax,this.gainStep]=g;this.bandwidthRange=b;this.rxRates=rates;this.sampleBits=bits;
  }
- async close(){if(this.writer&&this.reader&&!this.failed&&this.hasFilter){try{await this.command('LPF AUTO');await this.line('OK');}catch(e){/* Disconnect still releases USB after a lost response. */}}if(this.writer&&this.reader&&!this.failed&&this.hasAnalogBandwidth){try{await this.command('ALPF AUTO');await this.line('OK');}catch(e){}}if(this.hasSerialLease&&this.writer&&this.reader&&!this.failed){try{await this.command('RELEASE');await this.line('OK');}catch(e){/* Idle ownership expires if the port disappears. */}}this.hasSerialLease=false;this.hasExtendedTune=false;this.tuneRange=null;if(this.reader){await this.reader.cancel().catch(()=>{});await this.pumping;this.reader.releaseLock();this.reader=null;}if(this.writer){this.writer.releaseLock();this.writer=null;}if(this.port){await this.port.close().catch(()=>{});this.port=null;}this.frequency=null;this.filter=null;this.analogFilter=null;this.bandwidth=null;this.gainSetting=null;this.last=null;}
+ async close(){if(this.writer&&this.reader&&!this.failed&&this.hasFilter){try{await this.command('LPF AUTO');await this.line('OK');}catch(e){/* Disconnect still releases USB after a lost response. */}}if(this.writer&&this.reader&&!this.failed&&this.hasAnalogBandwidth){try{await this.command('ALPF AUTO');await this.line('OK');}catch(e){}}if(this.hasSerialLease&&this.writer&&this.reader&&!this.failed){try{await this.command('RELEASE');await this.line('OK');}catch(e){/* Idle ownership expires if the port disappears. */}}this.hasSerialLease=false;this.hasExtendedTune=false;this.tuneRange=null;await this.closePort();this.transport=null;this.supportsBaudChange=false;}
  validFrequency(f){
   if(!Number.isInteger(f))return false;
   if(this.hasExtendedTune)return !!this.tuneRange&&f>=this.tuneRange[0]&&f<=this.tuneRange[1];
@@ -97,8 +162,36 @@ class BurstSerialRadio {
   if(range&&this.bandwidth!==bandwidth){await this.command('BANDWIDTH '+bandwidth);await this.line('OK');this.bandwidth=bandwidth;}
  }
  async setGain(mode='HARDWARE',code=40){if(!['HARDWARE','MANUAL'].includes(mode)||!Number.isInteger(code)||code<this.gainMin||code>this.gainMax||(code-this.gainMin)%this.gainStep!==0)throw Error(`Choose a gain index from ${this.gainMin} to ${this.gainMax}.`);if(!this.hasGain)throw Error('Update SDR firmware for gain control.');if(mode==='HARDWARE'&&!this.hasHardwareAgc)throw Error('Update SDR firmware for hardware AGC.');const setting=mode==='MANUAL'?'MANUAL '+code:mode;if(setting!==this.gainSetting){await this.command('GAIN '+setting);await this.line('OK');this.gainSetting=setting;}await this.command('GAIN?');const h=(await this.line('GAIN ')).split(' ');if(!['HARDWARE','MANUAL'].includes(h[1])||!Number.isInteger(Number(h[2])))throw Error('Invalid gain response');return {mode:h[1],index:h[1]==='HARDWARE'?null:Number(h[2])};}
- async capture(c){return this.run(async()=>{const divider=[80000000,40000000,20000000,10000000,8000000,4000000,16000000].indexOf(c.rate);if(divider<0||!this.rxRates.includes(c.rate)||!this.sampleBits.includes(c.bits)||![512,1024,2048,4096].includes(c.fft))throw Error('Invalid capture settings');const start=performance.now();await this.tune(c.frequency,c.bandwidth??0);const gain=await this.setGain(c.gainMode,c.gain);await this.command(`CAP${c.bits*2} ${this.maxSamples} ${divider}`);const h=(await this.line('DATA ')).split(' '),n=Number(h[1]);if(n!==this.maxSamples)throw Error('Invalid capture length');const bytes=await this.read(Math.ceil(n*c.bits*2/8));if(crc32(bytes)!==parseInt(h[2],16))throw Error('Capture CRC mismatch');const iq=new Float32Array(n*2);let acc=0,bits=0,k=0;for(let j=0;j<n;j++){let i,q;if(c.bits===8){i=bytes[j*2];q=bytes[j*2+1];if(i>=128)i-=256;if(q>=128)q-=256;i*=4;q*=4;}else{while(bits<20){acc|=bytes[k++]<<bits;bits+=8;}const w=acc&0xfffff;acc>>>=20;bits-=20;i=w&1023;q=w>>>10;if(i>=512)i-=1024;if(q>=512)q-=1024;}iq[2*j]=i/512;iq[2*j+1]=-q/512;}
- const ps=spectrum(iq,c.fft);let peak=0;for(let j=1;j<ps.length;j++)if(ps[j]>ps[peak])peak=j;const elapsed=performance.now()-start;this.last={iq,frequency:c.frequency,rate:c.rate,bandwidth:c.bandwidth??0,bits:c.bits,time:Date.now()};return {...c,gain_actual:gain,sequence:++this.sequence,spectrum:ps,peak_hz:c.frequency*1e6+(peak-c.fft/2)*c.rate/c.fft,peak_db:ps[peak],capture_us:Number(h[3]),samples:n,elapsed_ms:elapsed,delivered_ksps:n/elapsed,crc_ok:true,iq};});}
+ async capturePacket(c,divider){
+  let n=Math.max(c.fft,this.captureSamples??this.maxSamples);
+  const damaged=message=>Object.assign(Error(message),{code:'CAPTURE_DAMAGED'});
+  for(let attempt=0;attempt<6;attempt++){
+   await this.command(`CAP${c.bits*2} ${n} ${divider}`);
+   try{
+    const header=await this.line();
+    if(header.startsWith('ERR '))throw Error(header);
+    const h=/^DATA (\d+) ([0-9a-fA-F]{1,8}) (\d+)$/.exec(header);
+    if(!h||Number(h[1])!==n)throw damaged('Invalid capture length or header');
+    // Detect a truncated transfer once data stops arriving, while allowing
+    // continuous transfers at slower baud rates up to the overall deadline.
+    const bytes=await this.read(Math.ceil(n*c.bits*2/8),performance.now()+5000,500);
+    if(crc32(bytes)!==parseInt(h[2],16))throw damaged('Capture CRC mismatch');
+    this.captureSamples=n;
+    return {bytes,n,captureUs:Number(h[3]),retries:attempt};
+   }catch(e){
+    if(this.failed||!['SERIAL_TIMEOUT','CAPTURE_DAMAGED'].includes(e.code))throw e;
+    this.droppedCaptures++;this.onCaptureError?.();
+    // A fresh echoed marker drains late payload bytes and restores framing.
+    // Do this even after the final failure so Resume starts from a boundary.
+    try{await this.synchronize();}catch(syncError){throw Error(`${e.message}; resynchronization failed: ${syncError.message}`,{cause:syncError});}
+    n=Math.max(c.fft,2**Math.ceil(Math.log2(n/2)));
+    this.captureSamples=n;
+    if(attempt===5)throw Error(`Capture failed after 6 attempts: ${e.message}. Check the serial connection.`);
+   }
+  }
+ }
+ async capture(c){return this.run(async()=>{const divider=[80000000,40000000,20000000,10000000,8000000,4000000,16000000].indexOf(c.rate);if(divider<0||!this.rxRates.includes(c.rate)||!this.sampleBits.includes(c.bits)||![512,1024,2048,4096].includes(c.fft))throw Error('Invalid capture settings');const start=performance.now();await this.tune(c.frequency,c.bandwidth??0);const gain=await this.setGain(c.gainMode,c.gain);const {bytes,n,captureUs,retries}=await this.capturePacket(c,divider);const iq=new Float32Array(n*2);let acc=0,bits=0,k=0;for(let j=0;j<n;j++){let i,q;if(c.bits===8){i=bytes[j*2];q=bytes[j*2+1];if(i>=128)i-=256;if(q>=128)q-=256;i*=4;q*=4;}else{while(bits<20){acc|=bytes[k++]<<bits;bits+=8;}const w=acc&0xfffff;acc>>>=20;bits-=20;i=w&1023;q=w>>>10;if(i>=512)i-=1024;if(q>=512)q-=1024;}iq[2*j]=i/512;iq[2*j+1]=-q/512;}
+ const ps=spectrum(iq,c.fft);let peak=0;for(let j=1;j<ps.length;j++)if(ps[j]>ps[peak])peak=j;const elapsed=performance.now()-start;this.last={iq,frequency:c.frequency,rate:c.rate,bandwidth:c.bandwidth??0,bits:c.bits,time:Date.now()};return {...c,gain_actual:gain,sequence:++this.sequence,spectrum:ps,peak_hz:c.frequency*1e6+(peak-c.fft/2)*c.rate/c.fft,peak_db:ps[peak],capture_us:captureUs,samples:n,retries,dropped_captures:this.droppedCaptures,elapsed_ms:elapsed,delivered_ksps:n/elapsed,crc_ok:true,iq};});}
 
 }
 const radio=new BurstSerialRadio();

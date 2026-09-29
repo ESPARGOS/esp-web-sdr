@@ -1,5 +1,6 @@
 import {ESPLoader,Transport} from './vendor/esptool-js-0.7.0.js';
 import {loadManifest,checkedImages,firmwareDate} from './catalog.mjs';
+import {finishSession} from './reset.mjs';
 const $=id=>document.getElementById(id);
 const manifestUrl=new URL('../firmware/manifest.json',import.meta.url);
 const UART_BAUDRATE=2000000;
@@ -72,14 +73,13 @@ $('install').onclick=async()=>{
    log(`Verified ${part.name}: ${actual}\n`);
   }
   $('progress').value=100;
-  // C5 watchdog reset is unimplemented in esptool-js 0.7.0. A physical
-  // unplug/replug reliably leaves download mode on this board.
-  await disconnect();
-  status(`Firmware installed and verified for ${variant.label}. Unplug for five seconds, reconnect, then open ESP-WebSDR.`);
+  status('Starting installed firmware…');
+  const reset=await finishSession(loader,transport,disconnect,log);
+  status(`Firmware installed and verified for ${variant.label}. ${reset?'Reset requested. Open ESP-WebSDR and connect to the device.':'Automatic reset could not be confirmed. Release BOOT, then press RESET or unplug and reconnect before opening ESP-WebSDR.'}`);
  }catch(e){status(`Installation failed: ${e.message||e} Reconnect in BOOT mode and retry.`,true);try{await disconnect();}catch(_){} }
  finally{busy=false;buttons();}
 };
-$('disconnect').onclick=async()=>{busy=true;buttons();try{await disconnect();status('Disconnected. Unplug and reconnect to boot the installed firmware.');}catch(e){status(e.message,true);}finally{busy=false;buttons();}};
+$('disconnect').onclick=async()=>{busy=true;buttons();try{const reset=loader?await finishSession(loader,transport,disconnect,log):(await disconnect(),false);status(reset?'Disconnected. Reset requested; the device can now be connected in ESP-WebSDR.':'Disconnected. Release BOOT, then press RESET or unplug and reconnect to boot the installed firmware.');}catch(e){status(e.message,true);}finally{busy=false;buttons();}};
 buttons();
 async function initialize(){
  try{

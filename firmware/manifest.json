@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "version": "tuning-20260929",
+  "version": "session-baud-20260929",
   "variants": {
     "esp32": {
       "revision": "esp32",
       "label": "ESP32 (2 MB or larger, UART)",
       "target": "esp32",
       "chip": "ESP32",
-      "version": "tuning-20260929",
+      "version": "session-baud-20260929",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -25,9 +25,9 @@
         {
           "name": "0-bootloader.bin",
           "offset": 4096,
-          "size": 25792,
-          "sha256": "4bf28db40c8a104f6b7988bf08d449f08f680db760ddc3d8791330fa89bf548d",
-          "md5": "24d30193893dbab8818c7847b2ba531f"
+          "size": 25584,
+          "sha256": "1647ef6f30f8a550ba7bf3b893e6ca5a7b3fabd4514060686b7877afc8c9e061",
+          "md5": "6f88798d97eb1779409f7f665977cb3a"
         },
         {
           "name": "1-partition-table.bin",
@@ -39,9 +39,9 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 656432,
-          "sha256": "134810ecadc077aa675629d4c80e3164e077714551153ddf8a69eb861f0a949b",
-          "md5": "90da34770eb14e85039c71a95a51bd14"
+          "size": 675744,
+          "sha256": "b2521562c60f8d6c97a8ccf54c5a2804b3d91ac4f426320d83dfeb72a4a06e7f",
+          "md5": "d0b14d0fc7ff6c5be54eb8edb6b0d797"
         }
       ],
       "build_date": "2026-09-29"

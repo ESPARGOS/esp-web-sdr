@@ -48,7 +48,7 @@ if($('hold').checked)line(maximum,'#e6b969',false);line(trace,'#37c964',true);}
 function render(f){const k=[f.frequency,f.rate,f.bits,f.fft,f.bandwidth,f.gainMode,f.gainMode==='MANUAL'?f.gain:'HARDWARE'].join('/');if(key!==k){key=k;clear();}latest=f;const a=Number($('average').value);trace=f.spectrum.map((v,i)=>trace?10*Math.log10(a*10**(trace[i]/10)+(1-a)*10**(v/10)):v);maximum=f.spectrum.map((v,i)=>maximum?Math.max(maximum[i],v):v);draw();
 wc.drawImage(water,0,0,water.width,water.height-1,0,1,water.width,water.height-1);const row=wc.createImageData(water.width,1),floor=Number($('floor').value),range=Number($('range').value);
 for(let x=0;x<water.width;x++){const lo=Math.floor(x*f.fft/water.width),hi=Math.max(lo+1,Math.floor((x+1)*f.fft/water.width));let v=-140;for(let j=lo;j<hi;j++)v=Math.max(v,f.spectrum[Math.min(j,f.fft-1)]);const c=lut[Math.max(0,Math.min(255,Math.round((v-floor)/range*255)))];row.data.set([...c,255],x*4);}wc.putImageData(row,0,0);
-$('gainStatus').textContent=f.gain_actual?.mode==='HARDWARE'?'Hardware AGC':f.gain_actual?`Manual · index ${f.gain_actual.index}`:'Update SDR firmware for gain control.';$('empty').hidden=true;labels(f);const now=performance.now();$('fps').textContent=previous?(1000/(now-previous)).toFixed(1):'—';previous=now;$('throughput').textContent=f.delivered_ksps.toFixed(1);$('latency').textContent=f.elapsed_ms.toFixed(1);$('peak').textContent=(f.peak_hz/1e6).toFixed(4);$('crc').textContent=`CRC OK · #${f.sequence}`;}
+$('gainStatus').textContent=f.gain_actual?.mode==='HARDWARE'?'Hardware AGC':f.gain_actual?`Manual · index ${f.gain_actual.index}`:'Update SDR firmware for gain control.';$('empty').hidden=true;labels(f);const now=performance.now();$('fps').textContent=previous?(1000/(now-previous)).toFixed(1):'—';previous=now;$('throughput').textContent=f.delivered_ksps.toFixed(1);$('latency').textContent=f.elapsed_ms.toFixed(1);$('peak').textContent=(f.peak_hz/1e6).toFixed(4);$('crc').textContent=`CRC OK · #${f.sequence}${f.dropped_captures?` · ${f.dropped_captures} dropped · ${f.samples} samples`:''}`;}
 async function loop(){
  if(running)return;
  running=true;
@@ -56,9 +56,10 @@ async function loop(){
   while(connected&&!paused){
    try{
     const f=await(await api('frame',config())).json();
-    if(connected&&!paused&&selectRxFrame(f))render(f);
-    error('');
+    if(connected&&!paused&&!radio.changingBaud&&selectRxFrame(f))render(f);
+    if(!radio.changingBaud)error('');
    }catch(e){
+    if(radio.changingBaud)break;
     paused=true;
     const disconnected=!!radio.failed;
     if(disconnected){connected=false;await radio.run(()=>radio.close()).catch(()=>{});}
@@ -70,22 +71,49 @@ async function loop(){
   }
  }finally{running=false;}
 }
+function serialWarning(){
+ const warning=$('serialWarning'),button=$('lowerBaud');
+ warning.hidden=!connected||radio.droppedCaptures<3;
+ const available=radio.supportsBaudChange&&radio.transport==='UART'&&radio.baudRate>1000000;
+ button.hidden=!available;button.disabled=!!radio.changingBaud;
+ button.textContent=radio.changingBaud?'Switching…':'Switch to 1 MBaud';
+ $('serialWarningText').textContent=available
+  ?'Repeated capture errors. A slower serial connection may help; the RF sample rate stays the same.'
+  :radio.transport==='UART'&&radio.baudRate===1000000
+   ?'Capture errors continue at 1 MBaud. Check the USB connection or try a smaller FFT.'
+   :radio.transport==='USB'?'Repeated capture errors. Check the USB connection or try a smaller FFT.'
+   :'Repeated capture errors. Check the USB connection. Updated firmware enables a slower UART connection.';
+}
 function state(){
+ serialWarning();
+ $('baudStatus').hidden=!connected||radio.transport!=='UART';
+ $('baudStatus').textContent=radio.transport==='UART'?`${radio.baudRate/1000000} MBaud`:'';
+ $('connect').disabled=!!radio.changingBaud;
  const warning=connected?radio.frequencyWarning(tuneFrequency):'';$('tuningWarning').textContent=warning;$('tuningWarning').hidden=!warning;
- for(const control of document.querySelectorAll('aside input,aside select'))control.disabled=!connected;
+ for(const control of document.querySelectorAll('aside input,aside select'))control.disabled=!connected||!!radio.changingBaud;
  $('deviceModel').textContent=connected?(radio.deviceName||'ESP32-'+radio.family):'';$('deviceModel').hidden=!connected;
  $('status').textContent=connected?(paused?'Paused':'Receiving'):'Disconnected';
  $('connect').textContent=connected?'Disconnect':'Connect ESP-SDR';$('light').classList.toggle('on',connected&&!paused);
- $('pause').disabled=!connected;$('pause').textContent=paused?'Resume':'Pause';
+ $('pause').disabled=!connected||!!radio.changingBaud;$('pause').textContent=paused?'Resume':'Pause';
  
- for(const b of document.querySelectorAll('[data-freq]'))b.disabled=!connected||(+b.dataset.freq===5500&&radio.family!=='C5')||!radio.validFrequency(+b.dataset.freq);
- $('gainMode').querySelector('[value=HARDWARE]').disabled=connected&&!radio.hasHardwareAgc;$('gainMode').disabled=!connected||!radio.hasGain;
- $('gain').disabled=!connected||$('gainMode').value!=='MANUAL'||!radio.hasGain;
- $('bandwidthOpen').disabled=!connected||!radio.bandwidthRange;$('bandwidth').disabled=!connected||!radio.bandwidthRange||$('bandwidthOpen').checked;
+ for(const b of document.querySelectorAll('[data-freq]'))b.disabled=!connected||!!radio.changingBaud||(+b.dataset.freq===5500&&radio.family!=='C5')||!radio.validFrequency(+b.dataset.freq);
+ $('gainMode').querySelector('[value=HARDWARE]').disabled=connected&&!radio.hasHardwareAgc;$('gainMode').disabled=!connected||!!radio.changingBaud||!radio.hasGain;
+ $('gain').disabled=!connected||!!radio.changingBaud||$('gainMode').value!=='MANUAL'||!radio.hasGain;
+ $('bandwidthOpen').disabled=!connected||!!radio.changingBaud||!radio.bandwidthRange;$('bandwidth').disabled=!connected||!!radio.changingBaud||!radio.bandwidthRange||$('bandwidthOpen').checked;
 }
 function bandwidthChanged(){if(!$('bandwidthOpen').checked&&!$('bandwidth').checkValidity()){$('bandwidth').reportValidity();return;}analogBandwidth=$('bandwidthOpen').checked?0:Number($('bandwidth').value);clear();}
 $('bandwidthOpen').onchange=()=>{state();bandwidthChanged();};$('bandwidth').onchange=bandwidthChanged;
 $('gainMode').onchange=()=>{state();clear();};$('gain').oninput=()=>{$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;clear();};
+radio.onCaptureError=serialWarning;
+$('lowerBaud').onclick=async()=>{
+ if(!connected||radio.changingBaud)return;
+ paused=true;radio.changingBaud=true;state();
+ try{
+  await radio.setBaudRate(1000000);
+  paused=false;previous=0;latest=null;clear();error('');
+ }catch(e){connected=!!radio.port&&!radio.failed;error(e,!connected);}
+ finally{radio.changingBaud=false;state();if(connected&&!paused)loop();}
+};
 $('connect').onclick=async()=>{$('connect').disabled=true;try{if(connected){connected=false;state();await api('disconnect',{});}else{await api('connect',{});applyRadioProfile();connected=true;paused=false;previous=0;latest=null;clear();loop();}error('');}catch(e){error(e,!['NotFoundError','AbortError'].includes(e?.name));}finally{$('connect').disabled=false;state();}};
 $('pause').onclick=()=>{paused=!paused;previous=0;state();if(!paused){error('');loop();}};$('clear').onclick=clear;
 for(const id of ['rate','bits','fft'])$(id).onchange=()=>{labels();};

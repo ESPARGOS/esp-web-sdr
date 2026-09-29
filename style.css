@@ -35,3 +35,5 @@ aside input:disabled,aside select:disabled{opacity:.5;cursor:not-allowed}#error 
 .source-links a:hover{color:#dee2e6}
 .source-links a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 @media(max-width:850px){.source-links{bottom:0;left:12px;right:12px;gap:8px;line-height:18px}}
+
+#serialWarning{background:#44391e;border:1px solid #9c8242;border-radius:7px;padding:10px 12px;margin-bottom:14px;color:#ffe3a0;font-size:14px}#serialWarning button{margin-left:8px;padding:4px 10px;font-size:14px}#baudStatus{color:var(--muted);font-size:14px}

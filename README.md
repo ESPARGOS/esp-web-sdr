@@ -25,39 +25,10 @@ While we put a lot of manual effort into [pyespargos](https://github.com/ESPARGO
 Close other programs using the serial port. If automatic bootloader entry fails,
 hold BOOT, tap RESET, then release BOOT and reconnect in the installer.
 
-Use native USB or UART at **2,000,000 baud, 8N1, no flow control**.
 See the [ESP-SDR guide](https://espargos.net/espsdr/) for supported chips and setup.
-
-ESP32-C3 firmware supports native USB, 80 MS/s IQ8/IQ10 snapshots, and
-approximately 14–62 MHz analog bandwidth. Tuning is attempted over
-2100–2800 MHz in 1 MHz steps, with a warning outside the normal Wi-Fi band.
-The viewer discovers these controls
-automatically from the firmware.
-
-## Receive controls
-
-Hardware AGC is the default. Manual gain uses PHY table indices, not dB.
-The viewer starts at 80 MS/s and 20 MHz bandwidth when supported, with short
-trace averaging. Analog bandwidth is approximate; “Wide open” selects the
-widest filter setting.
-
-Captures have gaps. Sample rate describes each snapshot, not sustained USB/UART
-throughput. Power is uncalibrated dBFS. Extended tuning may show a warning;
-reception outside standard Wi-Fi centers is not guaranteed. Disconnect before
-switching clients.
 
 ## Development
 
 Run checks with `node --test tests/*.test.mjs`.
 Bundled dependency licenses are in `flasher/vendor/`; the font license is in
 `fonts.css`.
-
-## Extended tuning
-
-Current firmware accepts 100–6000 MHz in 1 MHz steps on every supported chip.
-The viewer reads the range from the connected firmware, including C61 and
-original ESP32. Older firmware keeps its advertised range.
-
-The viewer displays a non-blocking warning outside the 2400–2483.5 MHz ISM band;
-C5 also suppresses the warning throughout its 5150–5895 MHz Wi-Fi band. Actual tuning and reception across
-the expanded range require hardware testing.
