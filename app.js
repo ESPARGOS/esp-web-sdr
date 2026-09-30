@@ -45,8 +45,8 @@ function measBar(c){
  // Hann window: 3 dB bandwidth 1.44 bins
  const rbw=1.44*c.rate/n,top=Number($('floor').value)+Number($('range').value),div=Number($('range').value)/4;
  const det=spec?($('specDetector').value==='max'?'max-hold':'average'):'average';
- const acq=spec?(specLast?`${(specLast.pairs/c.rate*1e3).toFixed(2)} ms Â· ${specLast.ffts} FFT Â· gapless`:'â€”')
-  :(latest?.samples?`${(latest.samples/c.rate*1e3).toFixed(3)} ms burst`:'â€”');
+ const acq=spec?(specLast?`${(specLast.pairs/c.rate*1e3).toFixed(2)} ms · ${specLast.ffts} FFT · gapless`:'—')
+  :(latest?.samples?`${(latest.samples/c.rate*1e3).toFixed(3)} ms burst`:'—');
  const item=(k,v)=>`<span>${k} <b style="color:#e8eef0;font-weight:600">${v}</b></span>`;
  $('meas').innerHTML=[item('Start',fmtHz(center-span/2)),item('Center',fmtHz(center)),item('Span',fmtHz(span)),item('Stop',fmtHz(center+span/2)),
   item('RBW',fmtHz(rbw)),item('Bins',`${n}`),item('Ref',`${top} dBFS`),item('Div',`${div} dB`),item('Det',det),item('Acq',acq),item('Mode',spec?'SPEC on-chip':'burst IQ')].join('');
@@ -60,7 +60,7 @@ if($('hold').checked)line(maximum,'#e6b969',false);line(trace,'#37c964',true);}
 function render(f){const k=[f.frequency,f.rate,f.bits,f.fft,f.bandwidth,f.gainMode,f.gainMode==='MANUAL'?f.gain:'HARDWARE'].join('/');if(key!==k){key=k;clear();}latest=f;const a=Number($('average').value);trace=f.spectrum.map((v,i)=>trace?10*Math.log10(a*10**(trace[i]/10)+(1-a)*10**(v/10)):v);maximum=f.spectrum.map((v,i)=>maximum?Math.max(maximum[i],v):v);draw();
 wc.drawImage(water,0,0,water.width,water.height-1,0,1,water.width,water.height-1);const row=wc.createImageData(water.width,1),floor=Number($('floor').value),range=Number($('range').value);
 for(let x=0;x<water.width;x++){const lo=Math.floor(x*f.fft/water.width),hi=Math.max(lo+1,Math.floor((x+1)*f.fft/water.width));let v=-140;for(let j=lo;j<hi;j++)v=Math.max(v,f.spectrum[Math.min(j,f.fft-1)]);const c=lut[Math.max(0,Math.min(255,Math.round((v-floor)/range*255)))];row.data.set([...c,255],x*4);}wc.putImageData(row,0,0);autoScale(trace);
-$('gainStatus').textContent=f.gain_actual?.mode==='HARDWARE'?'Hardware AGC':f.gain_actual?`Manual Â· index ${f.gain_actual.index}`:'Update SDR firmware for gain control.';$('empty').hidden=true;labels(f);$('fpsLabel').textContent='frames/s';$('throughputLabel').textContent='kS/s delivered';$('latencyLabel').textContent='ms / capture + transfer';const now=performance.now();$('fps').textContent=previous?(1000/(now-previous)).toFixed(1):'â€”';previous=now;$('throughput').textContent=f.delivered_ksps.toFixed(1);$('latency').textContent=f.elapsed_ms.toFixed(1);$('peak').textContent=(f.peak_hz/1e6).toFixed(4);$('crc').textContent=`CRC OK Â· #${f.sequence}${f.dropped_captures?` Â· ${f.dropped_captures} dropped Â· ${f.samples} samples`:''}`;}
+$('gainStatus').textContent=f.gain_actual?.mode==='HARDWARE'?'Hardware AGC':f.gain_actual?`Manual · index ${f.gain_actual.index}`:'Update SDR firmware for gain control.';$('empty').hidden=true;labels(f);$('fpsLabel').textContent='frames/s';$('throughputLabel').textContent='kS/s delivered';$('latencyLabel').textContent='ms / capture + transfer';const now=performance.now();$('fps').textContent=previous?(1000/(now-previous)).toFixed(1):'—';previous=now;$('throughput').textContent=f.delivered_ksps.toFixed(1);$('latency').textContent=f.elapsed_ms.toFixed(1);$('peak').textContent=(f.peak_hz/1e6).toFixed(4);$('crc').textContent=`CRC OK · #${f.sequence}${f.dropped_captures?` · ${f.dropped_captures} dropped · ${f.samples} samples`:''}`;}
 async function loop(){
  if(running)return;
  running=true;
@@ -91,7 +91,7 @@ function serialWarning(){
  warning.hidden=!connected||radio.droppedCaptures<3;
  const available=radio.supportsBaudChange&&radio.transport==='UART'&&radio.baudRate>1000000;
  button.hidden=!available;button.disabled=!!radio.changingBaud;
- button.textContent=radio.changingBaud?'Switchingâ€¦':'Switch to 1 MBaud';
+ button.textContent=radio.changingBaud?'Switching…':'Switch to 1 MBaud';
  $('serialWarningText').textContent=available
   ?'Repeated capture errors. A slower serial connection may help; the RF sample rate stays the same.'
   :radio.transport==='UART'&&radio.baudRate===1000000
@@ -112,7 +112,7 @@ function state(){
   for(const o of $('fft').options){o.disabled=!sizes.includes(Number(o.value));o.hidden=o.disabled;}
   $('specNote').hidden=!specOn;
   $('specNote').textContent=Number($('rate').value)===80000000?'80 MS/s: 256 bins only (a larger FFT does not fit between bank switches on one core). Use 16 or 40 MS/s for 1024/2048 bins.':
-   'Hardware AGC in SPEC = viewer auto gain (keeps peaks below â’14 dBFS). Manual gain is kept as set.';
+   'Hardware AGC in SPEC = viewer auto gain (keeps peaks below −14 dBFS). Manual gain is kept as set.';
   if(!sizes.includes(Number($('fft').value)))$('fft').value=String(specOn?sizes[sizes.length-1]:2048);}
  $('deviceModel').textContent=connected?(radio.deviceName||'ESP32-'+radio.family):'';$('deviceModel').hidden=!connected;
  $('status').textContent=connected?(paused?'Paused':'Receiving'):'Disconnected';
@@ -145,9 +145,9 @@ for(const id of ['rate','bits','fft'])$(id).onchange=()=>{state();labels();if(id
 $('frequency').onchange=()=>{tuneFrequency=Number($('frequency').value);labels();};
 $('frequency').onkeydown=e=>{if(e.key==='Enter')$('frequency').blur();};
 for(const b of document.querySelectorAll('[data-freq]'))b.onclick=()=>{$('frequency').value=b.dataset.freq;tuneFrequency=Number(b.dataset.freq);labels();};
-for(const id of ['floor','range'])$(id).oninput=()=>{$('floorValue').textContent=$('floor').value+' dBFS';$('rangeValue').textContent=$('range').value+' dB';$('scale').textContent=`${$('floor').value} â†’ ${Number($('floor').value)+Number($('range').value)} dBFS`;clear();};
+for(const id of ['floor','range'])$(id).oninput=()=>{$('floorValue').textContent=$('floor').value+' dBFS';$('rangeValue').textContent=$('range').value+' dB';$('scale').textContent=`${$('floor').value} → ${Number($('floor').value)+Number($('range').value)} dBFS`;clear();};
 $('hold').onchange=()=>{maximum=null;draw();};
-spec.onmousemove=e=>{if(!latest)return;const x=(e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth,i=Math.max(0,Math.min(latest.fft-1,Math.floor(x*latest.fft)));$('cursor').textContent=`${((latest.frequency*1e6+(x-.5)*latest.rate)/1e6).toFixed(5)} MHz Â· ${latest.spectrum[i].toFixed(1)} dBFS`;};
+spec.onmousemove=e=>{if(!latest)return;const x=(e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth,i=Math.max(0,Math.min(latest.fft-1,Math.floor(x*latest.fft)));$('cursor').textContent=`${((latest.frequency*1e6+(x-.5)*latest.rate)/1e6).toFixed(5)} MHz · ${latest.spectrum[i].toFixed(1)} dBFS`;};
 spec.onclick=e=>{if(connected&&latest){tuneFrequency=radio.nearestFrequency(latest.frequency+((e.clientX-spec.getBoundingClientRect().left)/spec.clientWidth-.5)*latest.rate/1e6);$('frequency').value=tuneFrequency;labels();}};
 new ResizeObserver(resize).observe(spec);labels();state();
 
@@ -175,7 +175,8 @@ function specToDbfs(bins,step,n){const out=new Float32Array(n);for(let j=0;j<n;j
 // [stride in n-sample blocks, units (12288 samples) per frame], measured on an
 // ESP32-S3 at 1 core: frames stay under ~400 kB/s and few FFTs are skipped.
 // 16 MS/s / 1024 needs stride >= 6: at 4-5 the mean detector overruns the bank switch (LATE abort).
-const SPEC_PARAMS={16000000:{256:[4,1],1024:[6,4],2048:[3,7]},40000000:{256:[12,3],1024:[12,9],2048:[6,17]},80000000:{256:[48,5]}};
+// 40 MS/s / 1024 uses stride 14: stride 12 hit LATE in 1 of 40 runs (mean detector).
+const SPEC_PARAMS={16000000:{256:[4,1],1024:[6,4],2048:[3,7]},40000000:{256:[12,3],1024:[14,9],2048:[6,17]},80000000:{256:[48,5]}};
 function specSizes(rate){return radio.hasSpecN?Object.keys(SPEC_PARAMS[rate]||{256:0}).map(Number):[256];}
 function specConfig(){const c=config(),rate=SPEC_PARAMS[c.rate]?c.rate:16000000,sizes=specSizes(rate),fft=sizes.includes(c.fft)?c.fft:sizes[0];
  const [stride,upf]=SPEC_PARAMS[rate][fft];
@@ -198,7 +199,7 @@ async function specLoop(){
     else if(gainWin.max<-35){if(++gainWin.low>=5&&specGain<radio.gainMax)specGain=Math.min(radio.gainMax,gainFix(specGain+2,true)),gainWin.low=0;}
     else gainWin.low=0;
     gainWin.max=-200;gainWin.t=now;}
-   agcNote=`SPEC auto gain Â· index ${specGain} Â· peak total ${tot.toFixed(0)} dBFS`;}
+   agcNote=`SPEC auto gain · index ${specGain} · peak total ${tot.toFixed(0)} dBFS`;}
   if(h.t-aggT>=rowMs/1000){specPending.push(agg);agg=null;}
   // hidden tab: no animation frames, so bound the backlog here
   if(specPending.length>1024)specPending.splice(0,specPending.length-512);
@@ -229,11 +230,11 @@ function renderSpec(rows){
  const now=performance.now();while(specCount.length&&specCount[0]<now-1000)specCount.shift();
  $('empty').hidden=true;labels(c);
  $('fps').textContent=`${specCount.length}`;$('fpsLabel').textContent='spectra/s';
- $('throughput').textContent=(specCount.length*(32+nb)/1e3).toFixed(0);$('throughputLabel').textContent=`kB/s over USB Â· ${c.rate/1e6} MS/s gapless on chip`;
- $('latency').textContent=specLast?(specLast.pairs/c.rate*1e3).toFixed(2):'â€”';$('latencyLabel').textContent=`ms / spectrum Â· ${c.maxHold?'max':'mean'} of ${specLast?.ffts??'â€”'} FFT`;
+ $('throughput').textContent=(specCount.length*(32+nb)/1e3).toFixed(0);$('throughputLabel').textContent=`kB/s over USB · ${c.rate/1e6} MS/s gapless on chip`;
+ $('latency').textContent=specLast?(specLast.pairs/c.rate*1e3).toFixed(2):'—';$('latencyLabel').textContent=`ms / spectrum · ${c.maxHold?'max':'mean'} of ${specLast?.ffts??'—'} FFT`;
  $('peak').textContent=((c.frequency*1e6+(peak-nb/2)*c.rate/nb)/1e6).toFixed(4);
- const g=specInfo?.gain;$('gainStatus').textContent=agcNote||(g?.mode==='HARDWARE'?'Hardware AGC':g?`Manual Â· index ${g.index}`:'');
- $('crc').textContent=`SPEC Â· gapless Â· #${specLast?.frame??0}${specLast?.drops?` Â· ${specLast.drops} dropped`:''}${specInfo?.crcErrors?` Â· ${specInfo.crcErrors} CRC err`:''}${specInfo?.hostDropped?` Â· ${Math.round(specInfo.hostDropped/1024)} kB skipped (page busy)`:''}`;
+ const g=specInfo?.gain;$('gainStatus').textContent=agcNote||(g?.mode==='HARDWARE'?'Hardware AGC':g?`Manual · index ${g.index}`:'');
+ $('crc').textContent=`SPEC · gapless · #${specLast?.frame??0}${specLast?.drops?` · ${specLast.drops} dropped`:''}${specInfo?.crcErrors?` · ${specInfo.crcErrors} CRC err`:''}${specInfo?.hostDropped?` · ${Math.round(specInfo.hostDropped/1024)} kB skipped (page busy)`:''}`;
 }
 // Default analog bandwidth is 20 MHz (-3 dB at +-10 MHz, VSG60 sweep): at 40/80 MS/s
 // SPEC would show filtered noise at the edges. Open it once, visibly; the user can close it again.
@@ -253,6 +254,6 @@ function autoScale(values){
  if(floor===f0&&range===r0)return;
  $('floor').value=floor;$('range').value=range;
  $('floorValue').textContent=floor+' dBFS';$('rangeValue').textContent=range+' dB';
- $('scale').textContent=`${floor} â†’ ${floor+range} dBFS`;draw();
+ $('scale').textContent=`${floor} → ${floor+range} dBFS`;draw();
 }
 $('autoscale').onchange=()=>{autoT=0;};
