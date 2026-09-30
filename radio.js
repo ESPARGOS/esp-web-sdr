@@ -2,12 +2,15 @@
 // Direct Web Serial driver. No network requests or server-side processing.
 const CRC_TABLE=Uint32Array.from({length:256},(_,i)=>{let c=i;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;return c>>>0;});
 function crc32(bytes){let c=0xffffffff;for(const b of bytes)c=CRC_TABLE[(c^b)&255]^(c>>>8);return (c^0xffffffff)>>>0;}
+// Yield to the event loop without timers: hidden tabs throttle setTimeout to 1 Hz,
+// which starves the SPEC reader. MessageChannel tasks are not throttled.
+const yieldTask=(()=>{const ch=new MessageChannel(),q=[];ch.port1.onmessage=()=>{const r=q.shift();if(r)r();};return()=>new Promise(r=>{q.push(r);ch.port2.postMessage(0);});})();
 function fft(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]];}}for(let len=2;len<=n;len*=2){const a=-2*Math.PI/len,cr=Math.cos(a),ci=Math.sin(a);for(let i=0;i<n;i+=len){let wr=1,wi=0;for(let j=0;j<len/2;j++){const k=i+j,l=k+len/2,tr=re[l]*wr-im[l]*wi,ti=re[l]*wi+im[l]*wr;re[l]=re[k]-tr;im[l]=im[k]-ti;re[k]+=tr;im[k]+=ti;const next=wr*cr-wi*ci;wi=wr*ci+wi*cr;wr=next;}}}}
 function spectrum(iq,n){const sums=new Float64Array(n),window=Float64Array.from({length:n},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(n-1))),norm=window.reduce((a,b)=>a+b,0)**2,blocks=Math.floor(iq.length/2/n);for(let b=0;b<blocks;b++){const re=new Float64Array(n),im=new Float64Array(n);let mi=0,mq=0;for(let j=0;j<n;j++){mi+=iq[2*(b*n+j)];mq+=iq[2*(b*n+j)+1];}mi/=n;mq/=n;for(let j=0;j<n;j++){re[j]=(iq[2*(b*n+j)]-mi)*window[j];im[j]=(iq[2*(b*n+j)+1]-mq)*window[j];}fft(re,im);for(let j=0;j<n;j++)sums[j]+=(re[j]**2+im[j]**2)/norm/blocks;}return Array.from({length:n},(_,j)=>10*Math.log10(Math.max(1e-14,sums[(j+n/2)%n])));}
 class BurstSerialRadio {
  constructor(){this.maxSamples=16380;this.captureSamples=null;this.droppedCaptures=0;this.baudRate=2000000;this.transport=null;this.supportsBaudChange=false;this.changingBaud=false;this.gainMin=0;this.gainMax=0;this.gainStep=1;this.bandwidthRange=null;this.sampleBits=[8,10];this.family="C5";this.hasExtendedTune=false;this.tuneRange=null;this.rxRates=[80000000,40000000,20000000,10000000,8000000,4000000];this.port=null;this.queue=[];this.queued=0;this.wake=null;this.reader=null;this.writer=null;this.failed=null;this.tail=Promise.resolve();this.sequence=0;this.last=null;this.frequency=null;this.filter=null;this.analogFilter=null;this.bandwidth=null;this.gainSetting=null;}
  run(f){const p=this.tail.then(f);this.tail=p.catch(()=>{});return p;}
- async pump(){try{for(;;){const {value,done}=await this.reader.read();if(done)break;if(value){this.queue.push(value);this.queued+=value.length;if(this.queued>2*1024*1024)throw Error('WebSerial receive queue overflow');if(this.wake)this.wake();}}}catch(e){this.failed=e;}finally{this.failed ||= Error('WebSerial disconnected');if(this.wake)this.wake();}}
+ async pump(){try{for(;;){const {value,done}=await this.reader.read();if(done)break;if(value){this.queue.push(value);this.queued+=value.length;if(this.lossy&&this.queued>1048576){while(this.queued>262144){const b=this.queue.shift();this.queued-=b.length;this.hostDropped+=b.length;}}if(this.queued>2*1024*1024)throw Error('WebSerial receive queue overflow');if(this.wake)this.wake();}}}catch(e){this.failed=e;}finally{this.failed ||= Error('WebSerial disconnected');if(this.wake)this.wake();}}
  async read(n,deadline=performance.now()+5000,idleMs=Infinity){let idleDeadline=performance.now()+idleMs;const out=new Uint8Array(n);let offset=0;while(offset<n){if(this.queued){const b=this.queue[0],k=Math.min(n-offset,b.length);out.set(b.subarray(0,k),offset);offset+=k;this.queued-=k;idleDeadline=performance.now()+idleMs;if(k===b.length)this.queue.shift();else this.queue[0]=b.subarray(k);continue;}if(this.failed)throw this.failed;const ms=Math.min(deadline,idleDeadline)-performance.now();if(ms<=0)throw Object.assign(Error('WebSerial response timed out'),{code:'SERIAL_TIMEOUT'});await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.wake=null;reject(Object.assign(Error('WebSerial response timed out'),{code:'SERIAL_TIMEOUT'}));},ms);this.wake=()=>{clearTimeout(timer);this.wake=null;resolve();};});}return out;}
  async line(prefix=''){let s='',end=performance.now()+5000;for(let j=0;j<256;j++){const b=(await this.read(1,end))[0];if(b===10){s=s.trim();if(!s.startsWith(prefix))throw Error(s||'Empty WebSerial response');return s;}s+=String.fromCharCode(b);}throw Object.assign(Error('Invalid WebSerial header'),{code:'CAPTURE_DAMAGED'});}
  async command(s){await this.writer.write(new TextEncoder().encode(s+'\n'));}
@@ -80,7 +83,7 @@ class BurstSerialRadio {
    catch(e){await this.close();throw e;}
   });
  }
- async negotiate(){await this.command('INFO');this.identity=await this.line();this.applyIdentity(this.identity);await this.command('CAPS');const caps=await this.line();this.supportsBaudChange=false;this.transport=null;if(caps.split(' ').includes('UARTBAUD')){await this.command('TRANSPORT?');const t=/^TRANSPORT (UART|USB) (\d+)$/.exec(await this.line());if(!t||(t[1]==='UART'?Number(t[2])!==this.baudRate:Number(t[2])!==0))throw Error('Invalid serial transport response');this.transport=t[1];this.supportsBaudChange=this.transport==='UART';}if(this.family==='S3')this.rxRates=[80000000,...(caps.split(' ').includes('RX40')?[40000000]:[]),...(caps.split(' ').includes('RX16')?[16000000]:[])];this.hasSerialLease=caps.split(' ').some(c=>c==='SERIALLEASE'||c==='DUALSERIAL');this.hasExtendedTune=caps.split(' ').includes('TUNEEXT');this.tuneRange=null;if(this.hasExtendedTune){await this.command('RANGE?');const h=(await this.line('RANGE ')).split(' '),lo=Number(h[1]),hi=Number(h[2]);if(h.length!==4||!Number.isInteger(lo)||!Number.isInteger(hi)||lo<100||hi>6000||lo>=hi||h[3]!=='1')throw Error('Invalid tuning range');this.tuneRange=[lo,hi];}this.hasAnalogFilter=caps.split(' ').includes('LPFANA');this.hasAnalogBandwidth=this.family!=='S3'&&caps.split(' ').includes('ALPF');this.hasFilter12=this.family!=='S3'&&caps.split(' ').includes('LPF12');this.hasFilter=caps.split(' ').includes('LPF')||this.hasAnalogFilter;this.hasGain=caps.split(' ').includes('GAIN');this.hasHardwareAgc=caps.split(' ').includes('HWAGC');if(caps.split(' ').includes('RXLIMITS')){await this.command('LIMITS?');this.applyLimits(await this.line('LIMITS '));}else{await this.command('GAIN?');const g=(await this.line('GAIN ')).split(' ');this.applyLimits('LIMITS '+JSON.stringify({gain:[Number(g[3]),Number(g[4]),1],bandwidth:null,rates:this.rxRates,bits:[8,10]}));}this.deviceName=this.family==='ESP32'?'ESP32':'ESP32-'+this.family;return {identity:this.identity,port:this.deviceName,family:this.family,filter:this.hasFilter};}
+ async negotiate(){await this.command('INFO');this.identity=await this.line();this.applyIdentity(this.identity);await this.command('CAPS');const caps=await this.line();this.supportsBaudChange=false;this.transport=null;if(caps.split(' ').includes('UARTBAUD')){await this.command('TRANSPORT?');const t=/^TRANSPORT (UART|USB) (\d+)$/.exec(await this.line());if(!t||(t[1]==='UART'?Number(t[2])!==this.baudRate:Number(t[2])!==0))throw Error('Invalid serial transport response');this.transport=t[1];this.supportsBaudChange=this.transport==='UART';}if(this.family==='S3')this.rxRates=[80000000,...(caps.split(' ').includes('RX40')?[40000000]:[]),...(caps.split(' ').includes('RX16')?[16000000]:[])];this.hasSerialLease=caps.split(' ').some(c=>c==='SERIALLEASE'||c==='DUALSERIAL');this.hasExtendedTune=caps.split(' ').includes('TUNEEXT');this.tuneRange=null;if(this.hasExtendedTune){await this.command('RANGE?');const h=(await this.line('RANGE ')).split(' '),lo=Number(h[1]),hi=Number(h[2]);if(h.length!==4||!Number.isInteger(lo)||!Number.isInteger(hi)||lo<100||hi>6000||lo>=hi||h[3]!=='1')throw Error('Invalid tuning range');this.tuneRange=[lo,hi];}this.hasAnalogFilter=caps.split(' ').includes('LPFANA');this.hasAnalogBandwidth=this.family!=='S3'&&caps.split(' ').includes('ALPF');this.hasFilter12=this.family!=='S3'&&caps.split(' ').includes('LPF12');this.hasFilter=caps.split(' ').includes('LPF')||this.hasAnalogFilter;this.hasGain=caps.split(' ').includes('GAIN');this.hasSpec=caps.split(' ').includes('SPEC');this.hasSpecN=caps.split(' ').includes('SPECN');this.hasHardwareAgc=caps.split(' ').includes('HWAGC');if(caps.split(' ').includes('RXLIMITS')){await this.command('LIMITS?');this.applyLimits(await this.line('LIMITS '));}else{await this.command('GAIN?');const g=(await this.line('GAIN ')).split(' ');this.applyLimits('LIMITS '+JSON.stringify({gain:[Number(g[3]),Number(g[4]),1],bandwidth:null,rates:this.rxRates,bits:[8,10]}));}this.deviceName=this.family==='ESP32'?'ESP32':'ESP32-'+this.family;return {identity:this.identity,port:this.deviceName,family:this.family,filter:this.hasFilter};}
  async setBaudRate(baudRate){return this.run(async()=>{
   this.changingBaud=true;
   try{
@@ -195,3 +198,48 @@ class BurstSerialRadio {
 
 }
 const radio=new BurstSerialRadio();
+
+// SPEC: continuous on-chip spectra (ESP32-S3 firmware with the SPEC capability).
+// Frame: "SPC1", u32 frame, u64 pair index, u32 pairs, u16 ffts, u8 flags, u8 gain,
+// u16 drops, u8 log2(n), u8 dB step, n codes (dB*step of |X|^2, FFT order), u32 CRC.
+BurstSerialRadio.prototype.spec=function(c,onFrame,shouldStop){return this.run(async()=>{
+ if(!this.hasSpec)throw Error('This firmware has no SPEC mode.');
+ if(this.transport!=='USB')throw Error('SPEC streams over the native USB port only.');
+ await this.tune(c.frequency,c.bandwidth??0);
+ const gain=await this.setGain(c.gainMode,c.gain);
+ const code={16000000:6,40000000:1,80000000:0}[c.rate];if(code===undefined)throw Error('SPEC supports 16, 40 and 80 MS/s.');
+ const n=this.hasSpecN?c.fft:256;
+ await this.command(`SPEC 0 ${c.stride||4} ${c.upf||1} ${c.maxHold===false?0:1} ${code}${this.hasSpecN?' '+n:''}`);
+ const head=(await this.line('SPEC ')).split(' ');
+ const info={nfft:Number(head[1]),fs:Number(head[2]),lo:Number(head[4])*1e6,gain,crcErrors:0};
+ if(info.nfft!==n||!(info.fs>0))throw Error('Unexpected SPEC header');
+ const isMagic=w=>w[0]===0x53&&w[1]===0x50&&w[2]===0x43&&w[3]===0x31;   // SPC1
+ const isEnd=w=>w[0]===0x53&&w[1]===0x50&&w[2]===0x45&&w[3]===0x43;     // SPEC(END)
+ const flen=28+n+4;
+ // SPEC is a live stream: if the page cannot keep up, skip old data (lossy)
+ // instead of failing, and always leave the device stopped on exit.
+ let stopping=false,count=0,ended=false;this.lossy=true;this.hostDropped=0;
+ try{
+ for(;;){
+  if((++count&31)===0)await yieldTask();
+  if(!stopping&&shouldStop()){stopping=true;await this.command('');}
+  const deadline=performance.now()+5000;
+  let w=await this.read(4,deadline);
+  while(!isMagic(w)&&!isEnd(w)){const b=await this.read(1,deadline);w=Uint8Array.of(w[1],w[2],w[3],b[0]);}
+  if(isEnd(w)){info.report='SPEC'+await this.line('');ended=true;return info;}
+  const rest=await this.read(flen-4,deadline),body=new Uint8Array(flen-4);
+  body.set(w,0);body.set(rest.subarray(0,flen-8),4);
+  const crc=(rest[flen-8]|rest[flen-7]<<8|rest[flen-6]<<16|rest[flen-5]<<24)>>>0;
+  if(crc32(body)!==crc||(1<<body[26])!==n){info.crcErrors++;continue;}
+  const dv=new DataView(body.buffer);
+  const h={frame:dv.getUint32(4,true),pairIndex:Number(dv.getBigUint64(8,true)),pairs:dv.getUint32(16,true),
+   ffts:dv.getUint16(20,true),flags:body[22],gain:body[23],drops:dv.getUint16(24,true),step:body[27]||2,n,bytes:flen};
+  h.t=h.pairIndex/info.fs;info.hostDropped=this.hostDropped;
+  onFrame(h,body.subarray(28,28+n),info);
+ }
+ }finally{
+  this.lossy=false;
+  if(!ended&&!this.failed&&this.writer){try{await this.command('');const end=performance.now()+1500;let w=new Uint8Array(4);
+   for(;;){const b=await this.read(1,end);w=Uint8Array.of(w[1],w[2],w[3],b[0]);if(isEnd(w)){await this.line('');break;}}}catch(e){/* watchdog ends the run */}}
+ }
+});};
