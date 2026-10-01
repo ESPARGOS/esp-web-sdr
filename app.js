@@ -140,16 +140,16 @@ async function loop(){
 }
 function serialWarning(){
  const warning=$('serialWarning'),button=$('lowerBaud');
- warning.hidden=!connected||radio.droppedCaptures<3;
+ warning.hidden=!connected||radio.droppedCaptures+radio.spectrumCrcErrors<3;
  const available=radio.supportsBaudChange&&radio.transport==='UART'&&radio.baudRate>1000000;
  button.hidden=!available;button.disabled=!!radio.changingBaud;
  button.textContent=radio.changingBaud?'Switching…':'Switch to 1 MBaud';
  $('serialWarningText').textContent=available
-  ?'Repeated capture errors. A slower serial connection may help; the RF sample rate stays the same.'
+  ?'Repeated capture / CRC errors. A slower serial connection may help; the RF sample rate stays the same.'
   :radio.transport==='UART'&&radio.baudRate===1000000
-   ?'Capture errors continue at 1 MBaud. Check the USB connection or try a smaller FFT.'
-   :radio.transport==='USB'?'Repeated capture errors. Check the USB connection or try a smaller FFT.'
-   :'Repeated capture errors. Check the USB connection. Updated firmware enables a slower UART connection.';
+   ?'Capture / CRC errors continue at 1 MBaud. Check the USB connection or try a smaller FFT.'
+   :radio.transport==='USB'?'Repeated capture / CRC errors. Check the USB connection or try a smaller FFT.'
+   :'Repeated capture / CRC errors. Check the USB connection. Updated firmware enables a slower UART connection.';
 }
 function state(){
  if(!connected||!spectrumMode)$('chipStats').hidden=true;

@@ -16,7 +16,7 @@ function yieldTask(){
 function fft(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]];}}for(let len=2;len<=n;len*=2){const a=-2*Math.PI/len,cr=Math.cos(a),ci=Math.sin(a);for(let i=0;i<n;i+=len){let wr=1,wi=0;for(let j=0;j<len/2;j++){const k=i+j,l=k+len/2,tr=re[l]*wr-im[l]*wi,ti=re[l]*wi+im[l]*wr;re[l]=re[k]-tr;im[l]=im[k]-ti;re[k]+=tr;im[k]+=ti;const next=wr*cr-wi*ci;wi=wr*ci+wi*cr;wr=next;}}}}
 function spectrum(iq,n){const sums=new Float64Array(n),window=Float64Array.from({length:n},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(n-1))),norm=window.reduce((a,b)=>a+b,0)**2,blocks=Math.floor(iq.length/2/n);for(let b=0;b<blocks;b++){const re=new Float64Array(n),im=new Float64Array(n);let mi=0,mq=0;for(let j=0;j<n;j++){mi+=iq[2*(b*n+j)];mq+=iq[2*(b*n+j)+1];}mi/=n;mq/=n;for(let j=0;j<n;j++){re[j]=(iq[2*(b*n+j)]-mi)*window[j];im[j]=(iq[2*(b*n+j)+1]-mq)*window[j];}fft(re,im);for(let j=0;j<n;j++)sums[j]+=(re[j]**2+im[j]**2)/norm/blocks;}return Array.from({length:n},(_,j)=>10*Math.log10(Math.max(1e-14,sums[(j+n/2)%n])));}
 class BurstSerialRadio {
- constructor(){this.maxSamples=16380;this.captureSamples=null;this.droppedCaptures=0;this.baudRate=2000000;this.transport=null;this.supportsBaudChange=false;this.changingBaud=false;this.gainMin=0;this.gainMax=0;this.gainStep=1;this.bandwidthRange=null;this.sampleBits=[8,10];this.family="C5";this.hasExtendedTune=false;this.tuneRange=null;this.rxRates=[80000000,40000000,20000000,10000000,8000000,4000000];this.port=null;this.queue=[];this.queued=0;this.wake=null;this.reader=null;this.writer=null;this.failed=null;this.tail=Promise.resolve();this.sequence=0;this.last=null;this.frequency=null;this.filter=null;this.analogFilter=null;this.bandwidth=null;this.gainSetting=null;}
+ constructor(){this.maxSamples=16380;this.captureSamples=null;this.droppedCaptures=0;this.spectrumCrcErrors=0;this.baudRate=2000000;this.transport=null;this.supportsBaudChange=false;this.changingBaud=false;this.gainMin=0;this.gainMax=0;this.gainStep=1;this.bandwidthRange=null;this.sampleBits=[8,10];this.family="C5";this.hasExtendedTune=false;this.tuneRange=null;this.rxRates=[80000000,40000000,20000000,10000000,8000000,4000000];this.port=null;this.queue=[];this.queued=0;this.wake=null;this.reader=null;this.writer=null;this.failed=null;this.tail=Promise.resolve();this.sequence=0;this.last=null;this.frequency=null;this.filter=null;this.analogFilter=null;this.bandwidth=null;this.gainSetting=null;}
  run(f){const p=this.tail.then(f);this.tail=p.catch(()=>{});return p;}
  async pump(){try{for(;;){const {value,done}=await this.reader.read();if(done)break;if(value){this.queue.push(value);this.queued+=value.length;if(this.lossy&&this.queued>1048576){while(this.queued>262144){const b=this.queue.shift();this.queued-=b.length;this.hostDropped+=b.length;}}if(this.queued>2*1024*1024)throw Error('WebSerial receive queue overflow');if(this.wake)this.wake();}}}catch(e){this.failed=e;}finally{this.failed ||= Error('WebSerial disconnected');if(this.wake)this.wake();}}
  async read(n,deadline=performance.now()+5000,idleMs=Infinity){let idleDeadline=performance.now()+idleMs;const out=new Uint8Array(n);let offset=0;while(offset<n){if(this.queued){const b=this.queue[0],k=Math.min(n-offset,b.length);out.set(b.subarray(0,k),offset);offset+=k;this.queued-=k;idleDeadline=performance.now()+idleMs;if(k===b.length)this.queue.shift();else this.queue[0]=b.subarray(k);continue;}if(this.failed)throw this.failed;const ms=Math.min(deadline,idleDeadline)-performance.now();if(ms<=0)throw Object.assign(Error('WebSerial response timed out'),{code:'SERIAL_TIMEOUT'});await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.wake=null;reject(Object.assign(Error('WebSerial response timed out'),{code:'SERIAL_TIMEOUT'}));},ms);this.wake=()=>{clearTimeout(timer);this.wake=null;resolve();};});}return out;}
@@ -143,7 +143,7 @@ class BurstSerialRadio {
   const m=/^(ESP32|C3|C5|C6|C61|S2|S3|S31)SDR 6 burst (\d+)$/.exec(identity);
   const n=m?Number(m[2]):0;
   if(!m||!Number.isInteger(n)||n<4096||n>16384)throw Error('Unsupported SDR firmware: '+identity);
-  this.family=m[1];this.maxSamples=n;this.captureSamples=null;this.droppedCaptures=0;
+  this.family=m[1];this.maxSamples=n;this.captureSamples=null;this.droppedCaptures=0;this.spectrumCrcErrors=0;
   this.rxRates=this.family==='ESP32'?[80000000,40000000,16000000]:this.family==='S31'?[16000000,8000000,4000000]:(this.family==='C3'||this.family==='S3'||this.family==='S2'||this.family==='C6')?[80000000]:[80000000,40000000,20000000,10000000,8000000,4000000];
  }
  applyLimits(line){
@@ -302,6 +302,10 @@ BurstSerialRadio.prototype.spec=function(c,onFrame,shouldStop){return this.run(a
    if((++count&15)===0)await yieldTask();
    if(!stopping&&shouldStop()){stopping=true;await this.command('');}
    const events=decoder.feed(await this.read(Math.max(1,Math.min(this.queued,8192)),performance.now()+5000));
+   // Report corruption even when no valid spectrum survives this read.
+   const crcErrors=decoder.crcErrors-info.crcErrors;
+   info.crcErrors=decoder.crcErrors;info.hostDropped=this.hostDropped;
+   if(crcErrors){this.spectrumCrcErrors+=crcErrors;this.onCaptureError?.();}
    for(const event of events){
     if(event.report){
      ended=true;info.report=event.report;
@@ -310,7 +314,6 @@ BurstSerialRadio.prototype.spec=function(c,onFrame,shouldStop){return this.run(a
     }
     if(event.stats){info.stats=event.stats;continue;}
     const h=event.header;h.t=h.pairIndex/info.fs;
-    info.crcErrors=decoder.crcErrors;info.hostDropped=this.hostDropped;
     onFrame(h,event.bins,info);
    }
   }
