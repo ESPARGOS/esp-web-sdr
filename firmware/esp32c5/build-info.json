@@ -1,5 +1,5 @@
 {
   "profile": "esp32c5",
-  "version": "3b49292-c5-bandwidth-uart-fix",
+  "version": "spectrum-integration-20261001",
   "idf_commit": "25fe69f946311abdaf9ad56591f25fedbc20ac98"
 }

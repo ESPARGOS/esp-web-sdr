@@ -81,10 +81,10 @@ class BurstSerialRadio {
   }
   throw failure;
  }
- async connect({baudRate=2000000}={}){
+ async connect({baudRate=2000000,port=null}={}){
   if(!navigator.serial)throw Error('WebSerial support is required in this browser.');
   if(!isSecureContext)throw Error('Serve this page over HTTPS or localhost.');
-  const port=await navigator.serial.requestPort();
+  if(!port)port=await navigator.serial.requestPort();
   return this.run(async()=>{
    await this.close();
    try{await this.connectPort(port,baudRate);return await this.negotiate();}
@@ -116,7 +116,7 @@ class BurstSerialRadio {
  get canStreamSpectrum(){return this.hasSpec&&!!this.specCapabilities?.transports.includes(this.transport);}
  spectrumContinuous(rate,n){const p=this.spectrumProfiles(rate).find(p=>p[2]===n);return p?.length===6?!!p[5]:!!this.specCapabilities?.continuous;}
  spectrumProfiles(rate){return this.specCapabilities?.profiles.filter(p=>p[0]===rate)||[];}
- async negotiate(){await this.command('INFO');this.identity=await this.line();this.applyIdentity(this.identity);await this.command('CAPS');const caps=await this.line();this.supportsBaudChange=false;this.transport=null;if(caps.split(' ').includes('UARTBAUD')){await this.command('TRANSPORT?');const t=/^TRANSPORT (UART|USB) (\d+)$/.exec(await this.line());if(!t||(t[1]==='UART'?Number(t[2])!==this.baudRate:Number(t[2])!==0))throw Error('Invalid serial transport response');this.transport=t[1];this.supportsBaudChange=this.transport==='UART';}if(this.family==='S3')this.rxRates=[80000000,...(caps.split(' ').includes('RX40')?[40000000]:[]),...(caps.split(' ').includes('RX16')?[16000000]:[])];this.hasSerialLease=caps.split(' ').some(c=>c==='SERIALLEASE'||c==='DUALSERIAL');this.hasExtendedTune=caps.split(' ').includes('TUNEEXT');this.tuneRange=null;if(this.hasExtendedTune){await this.command('RANGE?');const h=(await this.line('RANGE ')).split(' '),lo=Number(h[1]),hi=Number(h[2]);if(h.length!==4||!Number.isInteger(lo)||!Number.isInteger(hi)||lo<100||hi>6000||lo>=hi||h[3]!=='1')throw Error('Invalid tuning range');this.tuneRange=[lo,hi];}this.hasAnalogFilter=caps.split(' ').includes('LPFANA');this.hasAnalogBandwidth=this.family!=='S3'&&caps.split(' ').includes('ALPF');this.hasFilter12=this.family!=='S3'&&caps.split(' ').includes('LPF12');this.hasFilter=caps.split(' ').includes('LPF')||this.hasAnalogFilter;this.hasGain=caps.split(' ').includes('GAIN');this.hasSpec=caps.split(' ').includes('SPEC');this.hasSpecN=caps.split(' ').includes('SPECN');this.hasHardwareAgc=caps.split(' ').includes('HWAGC');if(caps.split(' ').includes('RXLIMITS')){await this.command('LIMITS?');this.applyLimits(await this.line('LIMITS '));}else{await this.command('GAIN?');const g=(await this.line('GAIN ')).split(' ');this.applyLimits('LIMITS '+JSON.stringify({gain:[Number(g[3]),Number(g[4]),1],bandwidth:null,rates:this.rxRates,bits:[8,10]}));}await this.negotiateSpectrum(caps);this.deviceName=this.family==='ESP32'?'ESP32':'ESP32-'+this.family;return {identity:this.identity,port:this.deviceName,family:this.family,filter:this.hasFilter};}
+ async negotiate(){await this.command('INFO');this.identity=await this.line();this.applyIdentity(this.identity);await this.command('CAPS');const caps=await this.line();this.supportsBaudChange=false;this.transport=null;if(caps.split(' ').includes('UARTBAUD')){await this.command('TRANSPORT?');const t=/^TRANSPORT (UART|USB) (\d+)$/.exec(await this.line());if(!t||(t[1]==='UART'?Number(t[2])!==this.baudRate:Number(t[2])!==0))throw Error('Invalid serial transport response');this.transport=t[1];this.supportsBaudChange=this.transport==='UART';}if(this.family==='S3')this.rxRates=[80000000,...(caps.split(' ').includes('RX40')?[40000000]:[]),...(caps.split(' ').includes('RX16')?[16000000]:[])];this.hasSerialLease=caps.split(' ').some(c=>c==='SERIALLEASE'||c==='DUALSERIAL');this.hasExtendedTune=caps.split(' ').includes('TUNEEXT');this.tuneRange=null;if(this.hasExtendedTune){await this.command('RANGE?');const h=(await this.line('RANGE ')).split(' '),lo=Number(h[1]),hi=Number(h[2]);if(h.length!==4||!Number.isInteger(lo)||!Number.isInteger(hi)||lo<100||hi>6000||lo>=hi||h[3]!=='1')throw Error('Invalid tuning range');this.tuneRange=[lo,hi];}this.hasAnalogFilter=caps.split(' ').includes('LPFANA');this.hasAnalogBandwidth=this.family!=='S3'&&caps.split(' ').includes('ALPF');this.hasFilter12=this.family!=='S3'&&caps.split(' ').includes('LPF12');this.hasFilter=caps.split(' ').includes('LPF')||this.hasAnalogFilter;this.hasGain=caps.split(' ').includes('GAIN');this.hasSpec=caps.split(' ').includes('SPEC');this.hasSpecN=caps.split(' ').includes('SPECN');this.hasSpecStats=caps.split(' ').includes('SPECSTAT');this.hasHardwareAgc=caps.split(' ').includes('HWAGC');if(caps.split(' ').includes('RXLIMITS')){await this.command('LIMITS?');this.applyLimits(await this.line('LIMITS '));}else{await this.command('GAIN?');const g=(await this.line('GAIN ')).split(' ');this.applyLimits('LIMITS '+JSON.stringify({gain:[Number(g[3]),Number(g[4]),1],bandwidth:null,rates:this.rxRates,bits:[8,10]}));}await this.negotiateSpectrum(caps);this.deviceName=this.family==='ESP32'?'ESP32':'ESP32-'+this.family;return {identity:this.identity,port:this.deviceName,family:this.family,filter:this.hasFilter};}
  async setBaudRate(baudRate){return this.run(async()=>{
   this.changingBaud=true;
   try{
@@ -252,6 +252,15 @@ class SpectrumDecoder {
     if(!/^SPECEND(?: \d+){12}$/.test(report)){at++;continue;}
     events.push({report,status:Number(report.split(' ')[1])});at+=end+1;continue;
    }
+   if(b[2]===83&&b[3]===49){ // SPS1: chip statistics (firmware with SPECSTAT)
+    if(b.length<40)break;
+    const dv=new DataView(b.buffer,b.byteOffset,40);
+    if(crc32(b.subarray(0,36))!==dv.getUint32(36,true)){this.crcErrors++;at++;continue;}
+    events.push({stats:{core0:dv.getUint16(4,true)/10,core1:dv.getUint16(6,true)/10,coverage:dv.getUint16(8,true)/10,
+     dual:!!(b[10]&1),assist:!!(b[10]&2),heapFree:dv.getUint32(12,true),heapLargest:dv.getUint32(16,true),abandoned:dv.getUint32(20,true),
+     drops:dv.getUint32(24,true),lateMax:dv.getUint16(28,true),queue:dv.getUint16(30,true)/10,fftsPerS:dv.getUint32(32,true),t:performance.now()}});
+    at+=40;continue;
+   }
    if(b[2]!==67||b[3]!==49){at++;continue;}
    const length=32+this.n;
    if(b.length<length){
@@ -283,7 +292,9 @@ BurstSerialRadio.prototype.spec=function(c,onFrame,shouldStop){return this.run(a
  let ended=false,stopping=false,count=0;
  this.lossy=true;this.hostDropped=0;
  try{
-  await this.command(`SPEC 0 ${profile[3]} ${profile[4]} ${c.maxHold===false?0:1} ${profile[1]}${this.hasSpecN?' '+n:''}`);
+  // c.upf may merge more units per frame than the profile (tied to the waterfall row time)
+  const upf=Math.min(1000,Math.max(profile[4],c.upf||0));
+  await this.command(`SPEC 0 ${profile[3]} ${upf} ${c.maxHold===false?0:1} ${profile[1]}${this.hasSpecN?' '+n:''}${this.hasSpecN&&this.hasSpecStats?' 1':''}`);
   const head=(await this.line('SPEC ')).split(' ');
   const info={nfft:Number(head[1]),fs:Number(head[2]),lo:Number(head[4])*1e6,gain,crcErrors:0};
   if(head.length!==5||info.nfft!==n||info.fs!==c.rate||info.lo!==c.frequency*1e6)throw Error('Unexpected spectrum header');
@@ -297,6 +308,7 @@ BurstSerialRadio.prototype.spec=function(c,onFrame,shouldStop){return this.run(a
      if(event.status)throw Error(`Spectrum capture stopped: ${event.report}`);
      return info;
     }
+    if(event.stats){info.stats=event.stats;continue;}
     const h=event.header;h.t=h.pairIndex/info.fs;
     info.crcErrors=decoder.crcErrors;info.hostDropped=this.hostDropped;
     onFrame(h,event.bins,info);

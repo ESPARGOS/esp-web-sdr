@@ -70,12 +70,14 @@ test('actual UI profile and spectrum click handlers retain 2612 MHz on every chi
    return elements.get(id);
   }};
   const spec={clientWidth:100,getBoundingClientRect:()=>({left:0,width:100})};
-  const c=vm.createContext({radio:r,document,spec,connected:true,latest:{frequency:2600,rate:40000000},
+  const c=vm.createContext({radio:r,document,spec,view:{a:0,b:1},suppressClick:false,tuneClick:null,setTimeout:fn=>fn(),clearTimeout(){},connected:true,latest:{frequency:2600,rate:40000000},
    tuneFrequency:2612,analogBandwidth:0,state:()=>{},labels:()=>{}});
   vm.runInContext(app.slice(0,app.indexOf('let connected=')),c);
   vm.runInContext('applyRadioProfile()',c);
   assert.deepEqual([elements.get('frequency').min,elements.get('frequency').max,elements.get('frequency').step],[100,6000,1]);
   assert.equal(c.tuneFrequency,2612);
+  vm.runInContext(app.split('\n').find(line=>line.startsWith('function viewFrac(')),c);
+  vm.runInContext(app.split('\n').find(line=>line.startsWith('function queueTune(')),c);
   vm.runInContext(app.split('\n').find(line=>line.startsWith('spec.onclick=')),c);
   spec.onclick({clientX:80});
   assert.equal(c.tuneFrequency,2612);assert.equal(elements.get('frequency').value,2612);

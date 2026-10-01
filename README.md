@@ -27,30 +27,24 @@ hold BOOT, tap RESET, then release BOOT and reconnect in the installer.
 
 See the [ESP-SDR guide](https://espargos.net/espsdr/) for supported chips and setup.
 
-## On-chip spectrum mode
+## Contributors
 
-When supported by the connected firmware and transport, the viewer offers
-**On-Chip Spectrum** alongside **I/Q Streaming**. Select a capture-mode button
-to show its options beneath it. The viewer queries the device for available sample rates
-and FFT sizes. S3, C3, C6 and C61 can keep RF capture running while computing
-selected FFT windows. Other validated targets provide on-chip FFTs of repeated
-snapshots. The note beside the controls distinguishes these modes, including
-when changing FFT size selects a different capture backend.
-
-The default analog bandwidth remains 20 MHz where supported. Switching spectrum
-mode or sample rate preserves the selected bandwidth, tuning and gain settings;
-**Wide Open** is enabled only when explicitly selected.
-
-Continuous RF capture does not mean that every sample is analyzed or every
-short event is visible. The status reports skipped work, dropped frames and
-CRC errors. A prolonged host/USB stall can require reconnecting; the viewer
-will not reuse a connection whose stream boundary could not be recovered.
-
-The original S3 implementation was contributed by Zoltan Doczi of
-[Z2Labs](https://www.z2labs.io/). See the firmware's
-[spectrum protocol and validation notes](https://github.com/ESPARGOS/esp-sdr/blob/main/docs/spectrum.md)
-for supported profiles and constraints. These changes require matching firmware;
-installing the viewer alone does not add device capabilities.
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Jeija">
+        <img src="https://github.com/Jeija.png?size=160" width="80" height="80" alt="Florian Euchner"><br>
+        <b>Florian Euchner</b>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/zodoczi">
+        <img src="https://github.com/zodoczi.png?size=160" width="80" height="80" alt="Zoltan Doczi"><br>
+        <b>Zoltan Doczi</b>
+      </a>
+    </td>
+  </tr>
+</table>
 
 ## License
 

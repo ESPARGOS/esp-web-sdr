@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "version": "session-baud-20260929",
+  "version": "spectrum-integration-20261001",
   "variants": {
     "esp32": {
       "revision": "esp32",
       "label": "ESP32 (2 MB or larger, UART)",
       "target": "esp32",
       "chip": "ESP32",
-      "version": "session-baud-20260929",
+      "version": "spectrum-integration-20261001",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -25,9 +25,9 @@
         {
           "name": "0-bootloader.bin",
           "offset": 4096,
-          "size": 25584,
-          "sha256": "1647ef6f30f8a550ba7bf3b893e6ca5a7b3fabd4514060686b7877afc8c9e061",
-          "md5": "6f88798d97eb1779409f7f665977cb3a"
+          "size": 25792,
+          "sha256": "68528c162a388e801e71856104fdea5dc22c791b378c20361f40d93e8b614048",
+          "md5": "f7c9d1d88c2b27fd22391748f2800d0b"
         },
         {
           "name": "1-partition-table.bin",
@@ -39,19 +39,19 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 675744,
-          "sha256": "b2521562c60f8d6c97a8ccf54c5a2804b3d91ac4f426320d83dfeb72a4a06e7f",
-          "md5": "d0b14d0fc7ff6c5be54eb8edb6b0d797"
+          "size": 664592,
+          "sha256": "ef85c1e2e936ba0b44274b48fbe6aa0fa7cfe7a5c2500d35bb8554956dd7a541",
+          "md5": "ce64e312de3768d87656e43eafdb8ab7"
         }
       ],
-      "build_date": "2026-09-29"
+      "build_date": "2026-10-01"
     },
     "esp32c3": {
       "revision": "esp32c3",
       "label": "ESP32-C3 (2 MB or larger)",
       "target": "esp32c3",
       "chip": "ESP32-C3",
-      "version": "tuning-20260929",
+      "version": "spectrum-integration-20261001",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -70,8 +70,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 21344,
-          "sha256": "8f73f3a5cd81eaed8daa6463728634de21e524dc7b42338d53343f7ea8fafe9b",
-          "md5": "8fee4d71bc2d6d1236dbb1fe42956ad7"
+          "sha256": "2a1689a2d370024a8d145266a67e2c41e2ec3fc63db20f5c9062198cd6875602",
+          "md5": "c3548c31a52249ac0f6f7b4e2fab52cb"
         },
         {
           "name": "1-partition-table.bin",
@@ -83,19 +83,19 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 688672,
-          "sha256": "59e83261803222fde5e6cc1e9c9ccec600281cbb120bcfad0145a245c0448e45",
-          "md5": "1d7603abe108f74f9b9da1c028e228fc"
+          "size": 702800,
+          "sha256": "edd4d11b0a76480adbf1a4a624791a4c749636874f5e08cbec6cd799e4fca566",
+          "md5": "0309d38f0897b1ce1f49a98112e86bc6"
         }
       ],
-      "build_date": "2026-09-29"
+      "build_date": "2026-10-01"
     },
     "esp32c5": {
       "revision": "esp32c5",
       "label": "ESP32-C5 (2 MB or larger)",
       "target": "esp32c5",
       "chip": "ESP32-C5",
-      "version": "3b49292-c5-bandwidth-uart-fix",
+      "version": "spectrum-integration-20261001",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -114,8 +114,8 @@
           "name": "0-bootloader.bin",
           "offset": 8192,
           "size": 22336,
-          "sha256": "84250bc2cdc681fbe945a08bb93c1e3d20dab1846da5f27dff496bf66e737ae2",
-          "md5": "3c5787a7a6062d6c269071bc87ee9e2f"
+          "sha256": "756a6aa3bd6d8322032358560a85e0e5ff6f67a3d3db9dbab737e3ed347ace1e",
+          "md5": "7888866956ca378d07fd854d6026ce99"
         },
         {
           "name": "1-partition-table.bin",
@@ -127,19 +127,19 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 788784,
-          "sha256": "2b36a5b14bcc226f18800e1a3fb6e8fe350ad49f0d2bcb14372ce4c3cff19433",
-          "md5": "d871c1b51d2547255476604d80266054"
+          "size": 798704,
+          "sha256": "c0a11d0b06da244eb405d1fd464e4037bfa39a793d1203f3b1d53c30fb717600",
+          "md5": "3ac11301167b2f1c1b8b399f4ba2ea51"
         }
       ],
-      "build_date": "2026-09-29"
+      "build_date": "2026-10-01"
     },
     "esp32c6": {
       "revision": "esp32c6",
       "label": "ESP32-C6 (2 MB or larger)",
       "target": "esp32c6",
       "chip": "ESP32-C6",
-      "version": "tuning-20260929",
+      "version": "spectrum-integration-20261001",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -158,8 +158,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 22240,
-          "sha256": "5d12d9e8bfa1ce6dd4675ed375056603f0e6e8d0fb107f6cbe0f2a7ae424e6aa",
-          "md5": "da958bd49aba67ba54f60957e7594bcc"
+          "sha256": "42383f4b66b628d6215665fbd5b5e1699460e846b39c8e8855f156fd0e5db8c0",
+          "md5": "8d2b551a4f2385031ece45fd101118f9"
         },
         {
           "name": "1-partition-table.bin",
@@ -171,19 +171,19 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 778448,
-          "sha256": "3399bc9c1e87b4fa808a3910ddc0eeb303ff3873c392d04827ecbbce6ca8d633",
-          "md5": "de9c6f9d34a22d534ab3faa6787d25f4"
+          "size": 789904,
+          "sha256": "004d7832f9ab4df369a14aecb1edb6478dd2e5bd77d73785fbfa642c7da45c2b",
+          "md5": "faf6d78633d24d78c6a05656cdccff3b"
         }
       ],
-      "build_date": "2026-09-29"
+      "build_date": "2026-10-01"
     },
     "esp32c61": {
       "revision": "esp32c61",
       "label": "ESP32-C61 (2 MB or larger)",
       "target": "esp32c61",
       "chip": "ESP32-C61",
-      "version": "tuning-20260929",
+      "version": "spectrum-integration-20261001",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -202,8 +202,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 22336,
-          "sha256": "23eaf6a82673f5c64e8c2f9c0ba22d0e8b2b414f01918d78374bd9ecdc0af190",
-          "md5": "2af8184f6d365fc78f1a39bb797cd716"
+          "sha256": "3c02ab42bd0e416a5ae34ad790a8afb41395eaf459be5ece54213876b905dc42",
+          "md5": "e4cfe2f20e619dc4dd463276bb7910a3"
         },
         {
           "name": "1-partition-table.bin",
@@ -215,19 +215,19 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 734992,
-          "sha256": "c0c3c555aa9940680bee90b5fbc71adbbc815aff77d023f2b7d78237dad4d829",
-          "md5": "1c1f5ba49c85651051a1ecc1de9758be"
+          "size": 746288,
+          "sha256": "a2cc945a0abfc8d6d6f60e43151692f13fe04daa22033fa3a51bb3521fcbeeb1",
+          "md5": "e8d5cdaa01c2993f5e0cbdc336b9a7fa"
         }
       ],
-      "build_date": "2026-09-29"
+      "build_date": "2026-10-01"
     },
     "esp32s2": {
       "revision": "esp32s2",
       "label": "ESP32-S2 (4 MB or larger)",
       "target": "esp32s2",
       "chip": "ESP32-S2",
-      "version": "tuning-20260929",
+      "version": "spectrum-integration-20261001",
       "flash_size": "4MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -246,8 +246,8 @@
           "name": "0-bootloader.bin",
           "offset": 4096,
           "size": 22320,
-          "sha256": "ee36ad3e8d4c1b49796c8c46537e153357d76b92e4a6e52b1f4a972e56eb7acc",
-          "md5": "c5ceb646283b92f83a5e760ab4df9121"
+          "sha256": "730a3059e9bbcb682604b5de88d9175ec7540bb3746006032f505394d630215b",
+          "md5": "670586526bb4cf55e084a4612c79759b"
         },
         {
           "name": "1-partition-table.bin",
@@ -259,19 +259,19 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 628528,
-          "sha256": "b65c673332d9d29e0ea440bcc2f4c5f246726ebe5d95b5f9c724b97ed4276846",
-          "md5": "7d1167a9010383f3637d5c84be5585e1"
+          "size": 637024,
+          "sha256": "ac853912c8a8fc063e31ad2102e8f74b97f4a25193d577de4fe9ae9cbb63dbd8",
+          "md5": "5e2e4705825d8d3e57bf050bf32853ff"
         }
       ],
-      "build_date": "2026-09-29"
+      "build_date": "2026-10-01"
     },
     "esp32s3": {
       "revision": "esp32s3",
       "label": "ESP32-S3 (2 MB or larger)",
       "target": "esp32s3",
       "chip": "ESP32-S3",
-      "version": "tuning-20260929",
+      "version": "spectrum-integration-20261001",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -290,8 +290,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 20896,
-          "sha256": "a02a1d07f8c2b07b19063efe3a3ec662ff9d170827da2e2c4e455ab4be8fe68b",
-          "md5": "9c3b509ad1a09831543f75ac6790086f"
+          "sha256": "1ac82009abdcb562aa226a61a470ba84f658a7fc34b12ac2adb423df27fb0dab",
+          "md5": "525e255341d30c57e915eaeb70e7a669"
         },
         {
           "name": "1-partition-table.bin",
@@ -303,19 +303,19 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 649760,
-          "sha256": "01b49cdc01e637a0e146f9b84836e55a7bf063ee693abd8bdd87fac9d59573aa",
-          "md5": "ab386cd01b3d0ebbd1d1385d360db80f"
+          "size": 661808,
+          "sha256": "db7d0d21383ddfd6474ea8b6bda8b4d8dd071e11c9de80b158b9d4d8c8bb641f",
+          "md5": "827fce460a1215bf2ae7cd99b1cd07a1"
         }
       ],
-      "build_date": "2026-09-29"
+      "build_date": "2026-10-01"
     },
     "esp32s31": {
       "revision": "esp32s31",
       "label": "ESP32-S31 (2 MB or larger)",
       "target": "esp32s31",
       "chip": "ESP32-S31",
-      "version": "tuning-20260929",
+      "version": "spectrum-integration-20261001",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -334,8 +334,8 @@
           "name": "0-bootloader.bin",
           "offset": 8192,
           "size": 21232,
-          "sha256": "ee86afc336e7381f9b97235e69227b7d51a766f2ebb8581b95a6a73649034b70",
-          "md5": "ca864bf4f515347593d2ce5ffe986865"
+          "sha256": "ede0e33ae77bba92f2d8fe4f499ff97c768158cac2b4c6ea290dc4e1a272d584",
+          "md5": "9cbf8d3101f2fb413f63eb754a6b5cb1"
         },
         {
           "name": "1-partition-table.bin",
@@ -347,12 +347,12 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 780464,
-          "sha256": "3e48d54017d730e51717861d450270611ecd682c7ccc9dfcaa0c59a9be30a9d6",
-          "md5": "3731522675d7910851c25b36aae5e2bf"
+          "size": 789424,
+          "sha256": "d7848ce6745e44590e5ee65e55d9faf9e88cd961dee5dfe12107f038a526cedc",
+          "md5": "d0ccf7b3287620bd853c9db8fa1f4aff"
         }
       ],
-      "build_date": "2026-09-29"
+      "build_date": "2026-10-01"
     }
   }
 }

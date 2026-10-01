@@ -46,3 +46,18 @@ test('a missing stream boundary marks the connection failed before ordinary reus
  await assert.rejects(radio.spec({rate:80000000,fft:256,frequency:2412},()=>{},()=>false),/reader stalled/);
  assert.match(String(radio.failed),/reader stalled/);assert.equal(radio.lossy,false);assert.equal(commands.at(-1),'');
 });
+
+test('statistics coexist with fragmented spectra and recover from corrupt telemetry',()=>{
+ const f=fixture(),stats=new Uint8Array(40),v=new DataView(stats.buffer);
+ stats.set([83,80,83,49]);v.setUint16(4,321,true);v.setUint16(6,876,true);v.setUint16(8,125,true);v.setUint16(10,3,true);
+ v.setUint32(12,32768,true);v.setUint32(16,8192,true);v.setUint32(32,4000,true);v.setUint32(36,f.crc(stats.subarray(0,36)),true);
+ const bad=stats.slice();bad[12]^=1;
+ for(const chunk of [1,7,64,513]){
+  const d=f.decoder(512),events=[],bytes=Uint8Array.from([...bad,...frame(f.crc,512),...stats,...new TextEncoder().encode(report)]);
+  for(let i=0;i<bytes.length;i+=chunk)events.push(...d.feed(bytes.subarray(i,i+chunk)));
+  assert.equal(events.length,3);assert.equal(events[0].header.n,512);assert.equal(events[2].report,report.trim());
+  const s=events[1].stats;assert.equal(s.core0,32.1);assert.equal(s.core1,87.6);assert.equal(s.coverage,12.5);
+  assert.equal(s.heapFree,32768);assert.equal(s.heapLargest,8192);assert.equal(s.fftsPerS,4000);assert.ok(s.dual&&s.assist);
+  assert.equal(d.crcErrors,1);
+ }
+});
