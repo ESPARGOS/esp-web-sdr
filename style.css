@@ -33,6 +33,8 @@ aside input:disabled,aside select:disabled{opacity:.5;cursor:not-allowed}#error 
 @media(max-width:850px){.source-links{bottom:0;left:12px;right:12px;gap:8px;line-height:18px}}
 
 #serialWarning{background:#44391e;border:1px solid #9c8242;border-radius:7px;padding:10px 12px;margin-bottom:14px;color:#ffe3a0;font-size:14px}#serialWarning button{margin-left:8px;padding:4px 10px;font-size:14px}#baudStatus{color:var(--muted);font-size:14px}
+#axis{display:block;padding:0}#axisCanvas{height:32px;cursor:grab;user-select:none}#axisCanvas:active{cursor:grabbing}
+#tuningWarning{display:none!important}input.offband{border-color:#9c8242!important;color:#ffe3a0}#splitter{height:12px;margin:-12px 0 2px;cursor:row-resize;position:relative;touch-action:none}#splitter::after{content:'';position:absolute;left:50%;top:4px;width:56px;height:4px;margin-left:-28px;border-radius:2px;background:#394348}#splitter:hover::after,#splitter.drag::after{background:var(--accent)}
 
 /* Capture mode buttons keep the active mode's controls directly beneath it. */
 .capture-modes{grid-column:1/-1;margin-top:24px}
