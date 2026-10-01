@@ -274,7 +274,8 @@ let specPending=[],specLast=null,specRAF=0,specCount=[],specInfo=null,autoT=0,wa
 // (see capture(): q is negated), so web bin j holds firmware bin (n/2-j) mod n.
 // code/step = 10log10|X|^2 with X = FFT(IQ10*64*hann)/n; 84.3 dB maps that to
 // the dBFS scale of spectrum() (full scale 512, Hann power normalization), for any n.
-function specToDbfs(bins,step,n){const out=new Float32Array(n);for(let j=0;j<n;j++){const v=bins[(n/2-j+n)%n];out[j]=v?v/step-84.3:-140;}
+// Code 0 includes below-floor powers; display it at the nominal encoding floor.
+function specToDbfs(bins,step,n){const out=new Float32Array(n);for(let j=0;j<n;j++){const v=bins[(n/2-j+n)%n];out[j]=v/step-84.3;}
  // zero-IF DC offset / LO leakage (35-45 dB over the floor, VSG60 test): bridge DC +-1 bin
  if($('dcMode').value==='fill'){const c=n/2,m=10*Math.log10((10**(out[c-2]/10)+10**(out[c+2]/10))/2);out[c-1]=out[c]=out[c+1]=m;}return out;}
 function specSizes(rate){return radio.spectrumProfiles(rate).map(p=>p[2]);}
