@@ -315,7 +315,7 @@
       "label": "ESP32-S31 (2 MB or larger)",
       "target": "esp32s31",
       "chip": "ESP32-S31",
-      "version": "s31-simd-20261001",
+      "version": "s31-iq-orientation-20261001",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -347,9 +347,9 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 792544,
-          "sha256": "55cb31662663dca2ca80f9b4ad4b0cd838ac4fbdcb90fcfdeaecef875ef3af9c",
-          "md5": "486afb96e17e257744028af8f83fd570"
+          "size": 792496,
+          "sha256": "eab28d72ca1b657bb67fd475582d4526101e750ac95f2cba5d33b2430863c0e8",
+          "md5": "ab19e818f9ea8cdfc06337240ce0bcb7"
         }
       ],
       "build_date": "2026-10-01"
