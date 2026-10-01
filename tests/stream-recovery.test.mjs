@@ -28,13 +28,13 @@ for(const failure of ['validation','device rejection','disconnect'])test(`${fail
  const {radio,commands,rejectNext}=radioFixture();
  if(failure==='device rejection')rejectNext();
  const elements=new Map();
- const $=id=>{if(!elements.has(id))elements.set(id,{value:'HARDWARE',classList:{toggle(){}},querySelector:()=>({})});return elements.get(id);};
+ const $=id=>{if(!elements.has(id))elements.set(id,{setAttribute(){},prepend(el){el.parentElement=this;},value:'HARDWARE',options:[],classList:{toggle(){}},querySelector:()=>({})});return elements.get(id);};
  const controls=[{}],presets=[{dataset:{freq:'2412'}},{dataset:{freq:'5500'}}];
  const document={querySelectorAll:s=>s==='[data-freq]'?presets:controls};
  let frames=0,closed=0;
  radio.close=async()=>{closed++;};
  const errors=[];
- const ctx=vm.createContext({radio,$,document,connected:true,paused:false,running:false,previous:0,
+ const ctx=vm.createContext({radio,$,document,spectrumMode:false,connected:true,paused:false,running:false,previous:0,
   clear:()=>{},tuneFrequency:failure==='validation'?6001:2612,setTimeout,
   config:()=>({frequency:ctx.tuneFrequency}),selectRxFrame:()=>true,
   render:()=>{frames++;ctx.paused=true;},error:(e,communication)=>errors.push({e,communication}),

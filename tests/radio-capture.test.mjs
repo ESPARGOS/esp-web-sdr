@@ -10,7 +10,7 @@ function receiver(corrupt=false){
  context.bytes=bytes;const crc=vm.runInContext('crc32(bytes)',context);
  radio.tune=async()=>{};radio.setGain=async()=>({mode:'HARDWARE',index:null});
  radio.command=async command=>commands.push(command);
- radio.line=async()=>`DATA 16380 ${(corrupt?crc^1:crc).toString(16)} 205`;
+ radio.line=async()=>`DATA 16380 ${((corrupt?crc^1:crc)>>>0).toString(16)} 205`;
  radio.read=async()=>bytes;
  return {radio,commands};
 }
