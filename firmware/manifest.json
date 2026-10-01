@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "spectrum-integration-20261001",
+  "version": "multiple releases",
   "variants": {
     "esp32": {
       "revision": "esp32",
@@ -315,7 +315,7 @@
       "label": "ESP32-S31 (2 MB or larger)",
       "target": "esp32s31",
       "chip": "ESP32-S31",
-      "version": "spectrum-integration-20261001",
+      "version": "s31-simd-20261001",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -334,8 +334,8 @@
           "name": "0-bootloader.bin",
           "offset": 8192,
           "size": 21232,
-          "sha256": "ede0e33ae77bba92f2d8fe4f499ff97c768158cac2b4c6ea290dc4e1a272d584",
-          "md5": "9cbf8d3101f2fb413f63eb754a6b5cb1"
+          "sha256": "bb7ce4d5c8b481c47cc0dbee2156e6d86a38ad3ca214935a12513063d52eb34b",
+          "md5": "f6c0de407ace3b45a35d698614ebe949"
         },
         {
           "name": "1-partition-table.bin",
@@ -347,9 +347,9 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 789424,
-          "sha256": "d7848ce6745e44590e5ee65e55d9faf9e88cd961dee5dfe12107f038a526cedc",
-          "md5": "d0ccf7b3287620bd853c9db8fa1f4aff"
+          "size": 792544,
+          "sha256": "55cb31662663dca2ca80f9b4ad4b0cd838ac4fbdcb90fcfdeaecef875ef3af9c",
+          "md5": "486afb96e17e257744028af8f83fd570"
         }
       ],
       "build_date": "2026-10-01"

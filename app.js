@@ -283,10 +283,10 @@ function specConfig(){
  const profile=profiles.find(p=>p[2]===c.fft)||profiles[0];
  if(!profile)return {...c,stride:1,upf:1};
  const [rate,,fft,stride,upf0]=profile;
- // S3 continuous: one bank unit is 12288 pairs (0.77 ms at 16 MS/s). ~2 frames per
+ // S3/S31 continuous: one bank unit is 12288 pairs (0.77 ms at 16 MS/s). ~2 frames per
  // waterfall row are enough; the chip merges the rest (far less dB coding/CRC/USB work).
  const unitMs=12288e3/rate,rowMs=Number($('specRow').value)||0;
- const upf=radio.family==='S3'&&radio.spectrumContinuous(rate,fft)?Math.min(1000,Math.max(upf0,Math.floor(rowMs/unitMs/2))):upf0;
+ const upf=['S3','S31'].includes(radio.family)&&radio.spectrumContinuous(rate,fft)?Math.min(1000,Math.max(upf0,Math.floor(rowMs/unitMs/2))):upf0;
  return {...c,rate,fft,bits:10,stride,upf,maxHold:$('specDetector').value==='max'};
 }
 async function specLoop(){
