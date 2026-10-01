@@ -27,8 +27,16 @@ hold BOOT, tap RESET, then release BOOT and reconnect in the installer.
 
 See the [ESP-SDR guide](https://espargos.net/espsdr/) for supported chips and setup.
 
-## Development
+## License
 
-Run checks with `node --test tests/*.test.mjs`.
+Except where otherwise noted, ESP-WebSDR is free software: you may redistribute
+it and/or modify it under the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option)
+any later version (`GPL-3.0-or-later`). See [LICENSE](LICENSE) for the full terms.
+It is provided without any warranty, including implied warranties of
+merchantability or fitness for a particular purpose.
+
+Third-party components retain their own licenses and copyright notices.
 Bundled dependency licenses are in `flasher/vendor/`; the font license is in
-`fonts.css`.
+`fonts.css`. The accompanying [ESP-SDR firmware](https://github.com/ESPARGOS/esp-sdr)
+is licensed separately; see its license and third-party notices.
