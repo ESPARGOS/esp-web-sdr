@@ -27,6 +27,14 @@ The installer also includes the **ESP32-S31 Ethernet / USB profile for
 stream continuously to desktop SDR applications. It has its own receiver
 control page at the board's DHCP address and does not use this serial viewer.
 
+ESP32-C2 / ESP8684 boards are supported over UART, with up to 8,190 I/Q samples
+and 256–2048-bin snapshot FFTs at 80/40/16 MS/s. The packaged C2 firmware requires
+a 26 MHz crystal; the installer checks the crystal before writing. For CH340
+bridges, use **Switch to 1 Mbaud** when the viewer reports transfer errors.
+C2 analog bandwidth covers approximately 12–20 MHz; zero selects the open
+capacitor setting. Controls are negotiated, so older C2 images retain their
+80 MS/s-only capability and disabled bandwidth control.
+
 Close other programs using the serial port. If automatic bootloader entry fails,
 hold BOOT, tap RESET, then release BOOT and reconnect in the installer.
 
@@ -64,3 +72,13 @@ Third-party components retain their own licenses and copyright notices.
 Bundled dependency licenses are in `flasher/vendor/`; the font license is in
 `fonts.css`. The accompanying [ESP-SDR firmware](https://github.com/ESPARGOS/esp-sdr)
 is licensed separately; see its license and third-party notices.
+
+ESP32-H2 uses its Bluetooth PHY capture engine at 32, 16, approximately
+10.667, and 6.4 MS/s (rate codes 7, 6, 8, and 9),
+with up to 16,380 complex samples and 256–2048-bin snapshot spectra. Both
+native USB Serial/JTAG and UART0 (TX GPIO24, RX GPIO23) are supported.
+The installer includes an H2 image for 2 MB or larger flash. The analog bandwidth control covers approximately 4–11 MHz; zero selects
+the widest filter setting. Lower rates are hardware subsampling without
+automatic anti-alias filtering. Continuous capture is not advertised. On a TX/RX-only adapter,
+enter download mode with BOOT/RESET before installation and reset afterward;
+the adapter cannot control the board's reset pins.

@@ -5,6 +5,7 @@ export function validateManifest(manifest) {
   if(!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(id)||!v||typeof v!=='object')throw Error('Invalid firmware profile.');
   if(!['label','chip','target','version'].every(key=>typeof v[key]==='string'&&v[key].length))throw Error('Incomplete firmware profile.');
   if(!/^esp32[a-z0-9]*$/.test(v.target)||v.chip!=='ESP32'+(v.target.slice(5)?'-'+v.target.slice(5).toUpperCase():''))throw Error('Firmware chip and target do not match.');
+  if(v.xtal_mhz!==undefined&&![26,40].includes(v.xtal_mhz))throw Error('Invalid crystal frequency.');
   const size=/^(\d+)MB$/.exec(v.flash_size);
   if(!size||+size[1]<=0||!['exact','minimum'].includes(v.flash_size_policy??'exact')||!Array.isArray(v.parts)||!v.parts.length)throw Error('Invalid flash layout.');
   const names=new Set();let end=0;
@@ -62,4 +63,10 @@ export function flashingBaudRate(variant) {
  // Streaming uses Ethernet/USB for samples; its recovery UART need not meet
  // the serial viewer's 2 Mbaud requirement.
  return variant?.application==='soapysdr'?115200:2000000;
+}
+
+// C2 firmware must match the physical crystal, independently of flash size.
+export function checkCrystal(variant, detected) {
+ if(variant.xtal_mhz!==undefined&&variant.xtal_mhz!==detected)
+  throw Error(`Selected firmware requires a ${variant.xtal_mhz} MHz crystal; detected ${detected} MHz. Choose matching firmware.`);
 }

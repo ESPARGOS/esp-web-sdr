@@ -1,0 +1,6 @@
+--flash-mode dio
+--flash-freq 60m
+--flash-size 2MB
+0x0 esp32c2/0-bootloader.bin
+0x8000 esp32c2/1-partition-table.bin
+0x10000 esp32c2/2-esp_sdr.bin

@@ -1,0 +1,1 @@
+python -m esptool --chip esp32h2 --port PORT write-flash @esp32h2/flash_args

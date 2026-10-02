@@ -1,5 +1,5 @@
 import {ESPLoader,Transport} from './vendor/esptool-js-0.7.0.js';
-import {loadManifest,checkedImages,firmwareDate,applicationGuidance,flashingBaudRate} from './catalog.mjs';
+import {loadManifest,checkedImages,firmwareDate,applicationGuidance,flashingBaudRate,checkCrystal} from './catalog.mjs';
 import {finishSession} from './reset.mjs';
 const $=id=>document.getElementById(id);
 const manifestUrl=new URL('../firmware/manifest.json',import.meta.url);
@@ -26,6 +26,7 @@ class SDRLoader extends ESPLoader {
  async detectChip(...args){
   await super.detectChip(...args);
   if(!Object.values(firmware.variants).some(v=>v.browser_supported!==false&&v.chip===this.chip.CHIP_NAME))throw Error('Wrong chip: no matching firmware is packaged.');
+  if(this.chip.CHIP_NAME==='ESP32-C2')this.detectedCrystal=await this.chip.getCrystalFreq(this);
   if(this.chip.CHIP_NAME==='ESP32-C5')this.chip.SPI_REG_BASE=0x60003000;
  }
 }
@@ -62,6 +63,7 @@ $('install').onclick=async()=>{
   const variant=selectedFirmware();
   if(variant.chip!==loader.chip.CHIP_NAME)throw Error(`Selected ${variant.chip} firmware, but connected chip is ${loader.chip.CHIP_NAME}. Choose the matching chip profile.`);
   if(!flashMatches(variant,detectedFlashSize))throw Error(`Selected firmware requires ${variant.flash_size_policy==='minimum'?'at least ':''}${variant.flash_size} flash; detected ${detectedFlashSize}.`);
+  checkCrystal(variant,loader.detectedCrystal);
   status('Downloading and checking firmware…');
   const fileArray=await checkedImages(variant,$('revision').value,manifestUrl),total=fileArray.reduce((s,f)=>s+f.data.length,0);
   status(`Writing ${variant.label} firmware. Keep the device connected.`);log(`Selected profile: ${variant.revision}\n`);

@@ -65,3 +65,10 @@ test('installer dates never fall back to internal release labels',()=>{
  for(const build_date of [undefined,'internal-label','2026-02-30','2026-13-01'])
   assert.equal(firmwareDate({build_date,version:'internal-label'}),'Unavailable');
 });
+
+ test('C2 firmware crystal must match the board before writing',async()=>{
+ const {checkCrystal,validateManifest}=await import('../flasher/catalog.mjs');
+ checkCrystal({xtal_mhz:26},26);checkCrystal({},40);
+ assert.throws(()=>checkCrystal({xtal_mhz:26},40),/26 MHz.*40 MHz/);
+ assert.throws(()=>checkCrystal({xtal_mhz:26},undefined),/crystal/);
+ });

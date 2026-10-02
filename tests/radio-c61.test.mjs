@@ -13,7 +13,7 @@ test('C61 identity negotiates buffer length without changing C5/S3 compatibility
   radio.applyIdentity(`${name}SDR 6 burst ${n}`);
   assert.equal(radio.family,name);assert.equal(radio.maxSamples,n);
  }
- for(const bad of ['C61SDR 5 burst 16380','C61SDR 6 burst 0','C61SDR 6 burst 999999','C2SDR 6 burst 16380','C61SDR 6 burst 16380 junk'])
+ for(const bad of ['C61SDR 5 burst 16380','C61SDR 6 burst 0','C61SDR 6 burst 999999','C4SDR 6 burst 16380','C61SDR 6 burst 16380 junk'])
   assert.throws(()=>radio.applyIdentity(bad),/Unsupported/);
 });
 test('C61 rejects 5 GHz and fractional tuning; C5 keeps its wider range',()=>{

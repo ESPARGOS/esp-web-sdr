@@ -398,6 +398,95 @@
       ],
       "application": "soapysdr",
       "build_date": "2026-10-02"
+    },
+    "esp32c2": {
+      "revision": "esp32c2",
+      "label": "ESP32-C2 (26 MHz crystal, 2 MB or larger, UART)",
+      "target": "esp32c2",
+      "chip": "ESP32-C2",
+      "version": "c2-controls-local",
+      "flash_size": "2MB",
+      "flash_size_policy": "minimum",
+      "flash_settings": {
+        "flash_mode": "dio",
+        "flash_size": "2MB",
+        "flash_freq": "60m"
+      },
+      "esptool_args": {
+        "after": "hard-reset",
+        "before": "default-reset",
+        "stub": true,
+        "chip": "esp32c2"
+      },
+      "parts": [
+        {
+          "name": "0-bootloader.bin",
+          "offset": 0,
+          "size": 19888,
+          "sha256": "acdd26b73d139ca8a7712e6bbbc0b4b96a14e1ff3f89ccf06aee1ca5f0591c80",
+          "md5": "aa9fa01011c857157bcfbaa87b4e3548"
+        },
+        {
+          "name": "1-partition-table.bin",
+          "offset": 32768,
+          "size": 3072,
+          "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+          "md5": "5d61d196adc3dba01928f264eb169be7"
+        },
+        {
+          "name": "2-esp_sdr.bin",
+          "offset": 65536,
+          "size": 602992,
+          "sha256": "27483bc3bfcd42cfba02b5037f0949a62520cabd37b132e51fd649e3e4a8cf84",
+          "md5": "80ecc742a106d8af6c5961814a3df217"
+        }
+      ],
+      "xtal_mhz": 26,
+      "build_date": "2026-10-02"
+    },
+    "esp32h2": {
+      "revision": "esp32h2",
+      "label": "ESP32-H2 (2 MB or larger)",
+      "target": "esp32h2",
+      "chip": "ESP32-H2",
+      "version": "h2-controls-local",
+      "flash_size": "2MB",
+      "flash_size_policy": "minimum",
+      "flash_settings": {
+        "flash_mode": "dio",
+        "flash_size": "2MB",
+        "flash_freq": "48m"
+      },
+      "esptool_args": {
+        "after": "hard-reset",
+        "before": "default-reset",
+        "stub": true,
+        "chip": "esp32h2"
+      },
+      "parts": [
+        {
+          "name": "0-bootloader.bin",
+          "offset": 0,
+          "size": 21920,
+          "sha256": "02b091846e06c8729bd41fb78e13b6d4d614c3299a017e5f6b9ccf6bf3300794",
+          "md5": "aebaa8ea6383bb227bc26a53ed50226f"
+        },
+        {
+          "name": "1-partition-table.bin",
+          "offset": 32768,
+          "size": 3072,
+          "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+          "md5": "5d61d196adc3dba01928f264eb169be7"
+        },
+        {
+          "name": "2-esp_sdr.bin",
+          "offset": 65536,
+          "size": 223312,
+          "sha256": "4495a3bf6dda8c9e4f2917212131e7a1f37ff8a2dc706f9bb87d525c333d750a",
+          "md5": "ff3af0db6a1bf2baa28447b746c9cfdd"
+        }
+      ],
+      "build_date": "2026-10-02"
     }
   }
 }
