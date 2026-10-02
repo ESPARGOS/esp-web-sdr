@@ -353,6 +353,51 @@
         }
       ],
       "build_date": "2026-10-01"
+    },
+    "esp32s31-stream": {
+      "revision": "esp32s31-stream",
+      "label": "ESP32-S31 Function-CoreBoard \u00b7 Ethernet / USB for SoapyESPSDR",
+      "target": "esp32s31",
+      "chip": "ESP32-S31",
+      "version": "streaming-cleanup-20261002",
+      "flash_size": "16MB",
+      "flash_size_policy": "minimum",
+      "flash_settings": {
+        "flash_mode": "dio",
+        "flash_size": "16MB",
+        "flash_freq": "80m"
+      },
+      "esptool_args": {
+        "after": "hard-reset",
+        "before": "default-reset",
+        "stub": true,
+        "chip": "esp32s31"
+      },
+      "parts": [
+        {
+          "name": "0-bootloader.bin",
+          "offset": 8192,
+          "size": 21088,
+          "sha256": "393c54c7272d09172fcbcc32c110b20a29f9d37aad443c3522c1b71d21d2e843",
+          "md5": "01628528df8c4d6abd647fffa409f375"
+        },
+        {
+          "name": "1-partition-table.bin",
+          "offset": 32768,
+          "size": 3072,
+          "sha256": "73c0b5c3e5fcba3a151cc70c453c93dd5f4798899e7f2f8cca76da1f32ffc501",
+          "md5": "2b4b4b97d8ee2913058233539ae5c9e3"
+        },
+        {
+          "name": "2-esp_sdr.bin",
+          "offset": 65536,
+          "size": 1081920,
+          "sha256": "dca0a9fb7c6b85b7c9b44463367f5e82ca15808029be4f84fe4871df3001e49c",
+          "md5": "8215507dca004f34554d48627f388e38"
+        }
+      ],
+      "application": "soapysdr",
+      "build_date": "2026-10-02"
     }
   }
 }

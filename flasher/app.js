@@ -1,5 +1,5 @@
 import {ESPLoader,Transport} from './vendor/esptool-js-0.7.0.js';
-import {loadManifest,checkedImages,firmwareDate} from './catalog.mjs';
+import {loadManifest,checkedImages,firmwareDate,applicationGuidance,flashingBaudRate} from './catalog.mjs';
 import {finishSession} from './reset.mjs';
 const $=id=>document.getElementById(id);
 const manifestUrl=new URL('../firmware/manifest.json',import.meta.url);
@@ -31,22 +31,23 @@ class SDRLoader extends ESPLoader {
 }
 const log=text=>{$('log').textContent+=text;$('log').scrollTop=$('log').scrollHeight;};
 function status(text,error=false){$('status').textContent=text;$('status').dataset.error=String(error);}
-function buttons(){const supported=!!navigator.serial&&isSecureContext;$('connect').disabled=!firmware||busy||!!transport||!supported;$('revision').disabled=!firmware||busy;$('install').disabled=busy||!loader||!$('revision').value;$('disconnect').disabled=busy||!transport;}
+function buttons(){const soapy=firmware?.variants[$('revision').value]?.application==='soapysdr';$('open-application').href=soapy?'https://github.com/ESPARGOS/SoapyESPSDR':'index.html';$('open-application').textContent=soapy?'Set up SoapyESPSDR →':'Open ESP-WebSDR →';const supported=!!navigator.serial&&isSecureContext;$('connect').disabled=!firmware||!$('revision').value||busy||!!transport||!supported;$('revision').disabled=!firmware||busy||!!transport;$('install').disabled=busy||!loader||!$('revision').value;$('disconnect').disabled=busy||!transport;}
 function beforeUnload(e){if(busy){e.preventDefault();e.returnValue='';}}
 window.addEventListener('beforeunload',beforeUnload);
 async function disconnect(){loader=null;detectedFlashSize=null;if(transport){const t=transport;transport=null;await t.disconnect();}$('device').textContent='Not connected';}
-$('revision').onchange=()=>{buttons();$('version').textContent=$('revision').value?firmwareDate(firmware.variants[$('revision').value]):'Choose a chip profile';status((firmware.variants[$('revision').value]?.label||'No board')+' selected. Install firmware matching your ESP32 chip.');};
+$('revision').onchange=()=>{buttons();$('version').textContent=$('revision').value?firmwareDate(firmware.variants[$('revision').value]):'Choose a chip profile';status((firmware.variants[$('revision').value]?.label||'No board')+' selected. '+applicationGuidance(firmware.variants[$('revision').value]));};
 $('connect').onclick=async()=>{
  busy=true;buttons();$('log').textContent='';status('Select your ESP32 device.');
  try{
+  const uartBaud=flashingBaudRate(selectedFirmware());
   const port=await navigator.serial.requestPort();
   const uart=port.getInfo().usbVendorId!==0x303a;
   transport=new Transport(port,false);
-  const candidate=new SDRLoader({transport,baudrate:uart?UART_BAUDRATE:115200,terminal:{clean(){},write:log,writeLine:s=>log(s+'\n')}});
+  const candidate=new SDRLoader({transport,baudrate:uart?uartBaud:115200,terminal:{clean(){},write:log,writeLine:s=>log(s+'\n')}});
   status('Connecting to the bootloader…');await candidate.main();
   // The bundled loader can recover from a failed speed change at ROM speed.
   // Never enable UART flashing after that fallback (or a skipped speed change).
-  if(uart&&transport.baudrate!==UART_BAUDRATE)throw new UartSpeedError();
+  if(uart&&transport.baudrate!==uartBaud)throw uartBaud===UART_BAUDRATE?new UartSpeedError():Error('Unable to set the UART flashing speed.');
   if(!Object.values(firmware.variants).some(v=>v.browser_supported!==false&&v.chip===candidate.chip.CHIP_NAME))throw Error('Wrong chip: no matching firmware is packaged.');
   const size=await candidate.detectFlashSize();if(!Object.values(firmware.variants).some(v=>v.browser_supported!==false&&v.chip===candidate.chip.CHIP_NAME&&flashMatches(v,size)))throw Error(`Detected ${size} flash; no packaged board matches this chip and flash size.`);detectedFlashSize=size;
   loader=candidate;
@@ -75,11 +76,11 @@ $('install').onclick=async()=>{
   $('progress').value=100;
   status('Starting installed firmware…');
   const reset=await finishSession(loader,transport,disconnect,log);
-  status(`Firmware installed and verified for ${variant.label}. ${reset?'Reset requested. Open ESP-WebSDR and connect to the device.':'Automatic reset could not be confirmed. Release BOOT, then press RESET or unplug and reconnect before opening ESP-WebSDR.'}`);
+  status(`Firmware installed and verified for ${variant.label}. ${reset?'Reset requested.':'Automatic reset could not be confirmed. Release BOOT, then press RESET or unplug and reconnect.'} ${applicationGuidance(variant)}`);
  }catch(e){status(`Installation failed: ${e.message||e} Reconnect in BOOT mode and retry.`,true);try{await disconnect();}catch(_){} }
  finally{busy=false;buttons();}
 };
-$('disconnect').onclick=async()=>{busy=true;buttons();try{const reset=loader?await finishSession(loader,transport,disconnect,log):(await disconnect(),false);status(reset?'Disconnected. Reset requested; the device can now be connected in ESP-WebSDR.':'Disconnected. Release BOOT, then press RESET or unplug and reconnect to boot the installed firmware.');}catch(e){status(e.message,true);}finally{busy=false;buttons();}};
+$('disconnect').onclick=async()=>{busy=true;buttons();try{const reset=loader?await finishSession(loader,transport,disconnect,log):(await disconnect(),false);status(reset?'Disconnected. Reset requested; the installed firmware can now be used.':'Disconnected. Release BOOT, then press RESET or unplug and reconnect to boot the installed firmware.');}catch(e){status(e.message,true);}finally{busy=false;buttons();}};
 buttons();
 async function initialize(){
  try{
@@ -98,7 +99,7 @@ async function initialize(){
   if(unavailable.length){const note=document.createElement('p');note.className='muted';note.textContent=unavailable.map(v=>v.chip).join(', ')+': firmware is available, but the bundled browser flasher does not support this chip yet. Use ESP-IDF/esptool with the firmware artifact.';$('revision').after(note);}
   const requestedBoard=new URLSearchParams(location.search).get('board');
   if(requestedBoard&&firmware.variants[requestedBoard]?.browser_supported){$('revision').value=requestedBoard;$('version').textContent=firmwareDate(firmware.variants[requestedBoard]);}
-  status(navigator.serial&&isSecureContext?'Ready.':'This browser needs WebSerial support. Serve this page over HTTPS or localhost.',!(navigator.serial&&isSecureContext));
+  status(navigator.serial&&isSecureContext?($('revision').value?applicationGuidance(firmware.variants[$('revision').value]):'Choose a firmware profile, then connect your board.'):'This browser needs WebSerial support. Serve this page over HTTPS or localhost.',!(navigator.serial&&isSecureContext));
  }catch(e){firmware=null;status(`Cannot load firmware: ${e.message} Check that the firmware folder is deployed alongside this website.`,true);}
  buttons();
 }

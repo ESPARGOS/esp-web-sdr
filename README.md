@@ -22,6 +22,11 @@ While we put a lot of manual effort into [pyespargos](https://github.com/ESPARGO
 2. Install the matching firmware with the [firmware installer](https://espargos.net/espsdr/app/flash.html).
 3. Open the [viewer](https://espargos.net/espsdr/app/), connect to the board, and select a frequency.
 
+The installer also includes the **ESP32-S31 Ethernet / USB profile for
+[SoapyESPSDR](https://github.com/ESPARGOS/SoapyESPSDR)**. Select that profile to
+stream continuously to desktop SDR applications. It has its own receiver
+control page at the board's DHCP address and does not use this serial viewer.
+
 Close other programs using the serial port. If automatic bootloader entry fails,
 hold BOOT, tap RESET, then release BOOT and reconnect in the installer.
 

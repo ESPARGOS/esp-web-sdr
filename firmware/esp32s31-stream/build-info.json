@@ -1,0 +1,5 @@
+{
+  "profile": "esp32s31-stream",
+  "version": "streaming-cleanup-20261002",
+  "idf_commit": "c712a0dde385d659a1470a136251980d31a70bc1"
+}

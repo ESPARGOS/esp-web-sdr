@@ -49,3 +49,17 @@ export function firmwareDate(variant) {
  const date=new Date(value+'T00:00:00Z');
  return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value?value:'Unavailable';
 }
+
+// Keep post-install guidance tied to the selected application, not the chip:
+// the S31 has both a serial viewer profile and a Soapy streaming profile.
+export function applicationGuidance(variant) {
+ return variant?.application==='soapysdr'
+  ? 'Use SoapyESPSDR over Ethernet or native high-speed USB. Open the device IP address in a browser for receiver controls. This profile does not connect to the ESP-WebSDR serial viewer.'
+  : 'Open ESP-WebSDR and connect to the device.';
+}
+
+export function flashingBaudRate(variant) {
+ // Streaming uses Ethernet/USB for samples; its recovery UART need not meet
+ // the serial viewer's 2 Mbaud requirement.
+ return variant?.application==='soapysdr'?115200:2000000;
+}
