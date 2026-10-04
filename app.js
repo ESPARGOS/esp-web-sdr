@@ -279,6 +279,7 @@ function specToDbfs(bins,step,n){const out=new Float32Array(n);for(let j=0;j<n;j
  // zero-IF DC offset / LO leakage (35-45 dB over the floor, VSG60 test): bridge DC +-1 bin
  if($('dcMode').value==='fill'){const c=n/2,m=10*Math.log10((10**(out[c-2]/10)+10**(out[c+2]/10))/2);out[c-1]=out[c]=out[c+1]=m;}return out;}
 function specSizes(rate){return radio.spectrumProfiles(rate).map(p=>p[2]);}
+function specDisplayKey(c){return ['spec',c.rate,c.fft,c.frequency,c.bandwidth,c.gainMode,c.gain,c.maxHold,$('dcMode').value,$('specRow').value].join('/');}
 function specConfig(){
  const c=config(),profiles=radio.spectrumProfiles(c.rate);
  const profile=profiles.find(p=>p[2]===c.fft)||profiles[0];
@@ -292,35 +293,45 @@ function specConfig(){
 }
 async function specLoop(){
  specPending=[];specLast=null;specCount=[];specCov=null;
- const c=specConfig(),n=c.fft,rowMs=Number($('specRow').value);let agg=null,aggN=0,aggT=0;
- const changed=()=>{const m=specConfig();return m.frequency!==c.frequency||m.gainMode!==c.gainMode||m.gain!==c.gain||m.bandwidth!==c.bandwidth||m.maxHold!==c.maxHold||m.rate!==c.rate||m.fft!==c.fft||Number($('specRow').value)!==rowMs;};
+ const c=specConfig(),n=c.fft,rowMs=Number($('specRow').value),agg=new SpectrumAccumulator(n,c.maxHold),dcMode=$('dcMode').value;let aggT=0;
+ const displayKey=specDisplayKey(c),queueRow=()=>{const row=agg.finish();if(row){row.key=displayKey;specPending.push(row);}};
+ const changed=()=>{const m=specConfig();return $('dcMode').value!==dcMode||m.frequency!==c.frequency||m.gainMode!==c.gainMode||m.gain!==c.gain||m.bandwidth!==c.bandwidth||m.maxHold!==c.maxHold||m.rate!==c.rate||m.fft!==c.fft||Number($('specRow').value)!==rowMs;};
  if(!specRAF)specRAF=requestAnimationFrame(specFrame);
  specInfo=await radio.spec(c,(h,bins,info)=>{
+  if(changed())return;
   specInfo=info;if(info.stats)specCov=info.stats.coverage/100;else if(h.pairs&&radio.spectrumContinuous(c.rate,n))specCov=h.ffts*n/h.pairs;else specCov=null;const s=specToDbfs(bins,h.step,n);
-  if(!agg){agg=s;aggN=1;aggT=h.t;}else if(c.maxHold){for(let i=0;i<n;i++)if(s[i]>agg[i])agg[i]=s[i];}
-  else{aggN++;for(let i=0;i<n;i++)agg[i]=10*Math.log10(((aggN-1)*10**(agg[i]/10)+10**(s[i]/10))/aggN);}
+  if(!agg.weight)aggT=h.t;
+  agg.add(s,h.ffts);
   specLast=h;specCount.push(performance.now());
-  if(h.t-aggT>=rowMs/1000){specPending.push(agg);agg=null;}
+  // A frame's timestamp is its start, not its end. Include its sample span.
+  if(agg.weight&&h.t+h.pairs/c.rate-aggT>=rowMs/1000)queueRow();
   // hidden tab: no animation frames, so bound the backlog here
   if(specPending.length>1024)specPending.splice(0,specPending.length-512);
   if(specCount.length>4096){const t=performance.now()-1000;let i=0;while(i<specCount.length&&specCount[i]<t)i++;specCount.splice(0,i);}
  },()=>!connected||paused||!spectrumMode||changed());
+ if(!changed()&&spectrumMode){queueRow();if(specPending.length&&!specRAF)specRAF=requestAnimationFrame(specFrame);}
 }
-function specFrame(){specRAF=0;if(specPending.length){let rows=specPending;specPending=[];if(rows.length>water.height)rows=rows.slice(-water.height);renderSpec(rows);}if(connected&&!paused&&spectrumMode)specRAF=requestAnimationFrame(specFrame);}
+function specFrame(){specRAF=0;if(specPending.length){const rows=specPending;specPending=[];renderSpec(rows);}if(connected&&!paused&&spectrumMode)specRAF=requestAnimationFrame(specFrame);}
 function renderSpec(rows){
- const c=specConfig(),nb=rows[0].length,k=['spec',c.rate,nb,c.frequency,c.bandwidth,c.gainMode,c.gain,$('specRow').value].join('/');
+ const c=specConfig(),k=specDisplayKey(c);
+ rows=rows.filter(row=>row.key===k);
+ if(!spectrumMode||!rows.length)return;
+ const nb=rows[0].bins.length;
  if(key!==k){key=k;clear();}
- const cur=Float32Array.from(rows[0]);if(c.maxHold){for(const r of rows)for(let i=0;i<nb;i++)if(r[i]>cur[i])cur[i]=r[i];}
- else for(let i=0;i<nb;i++){let p=0;for(const r of rows)p+=10**(r[i]/10);cur[i]=10*Math.log10(p/rows.length);}
+ const batch=new SpectrumAccumulator(nb,c.maxHold);
+ for(const r of rows)batch.add(r.bins,r.weight);
+ const cur=batch.finish().bins;
  const a=Number($('average').value);
  if(trace&&trace.length!==nb){trace=null;maximum=null;}
  trace=Array.from(cur,(v,i)=>trace?10*Math.log10(a*10**(trace[i]/10)+(1-a)*10**(v/10)):v);
- maximum=Array.from(cur,(v,i)=>maximum?Math.max(maximum[i],v):v);
+ // Preserve brief peaks even when several spectra/rows arrive in one paint.
+ if(!maximum)maximum=Array(nb).fill(-Infinity);
+ for(const r of rows)for(let i=0;i<nb;i++)maximum[i]=Math.max(maximum[i],r.peak[i]);
  latest={frequency:c.frequency,rate:c.rate,fft:nb,spectrum:trace};draw();
  const n=Math.min(rows.length,water.height),floor=Number($('floor').value),range=Number($('range').value),W=water.width;
  wc.drawImage(water,0,0,W,water.height-n,0,n,W,water.height-n);
  // one pixel column = max of the bins it covers in the current view
- const newest=[];for(let r=0;r<n;r++)newest.push(rows[rows.length-1-r]);pushWater(newest);paintRows(newest,0);
+ const newest=[];for(let r=0;r<n;r++)newest.push(rows[rows.length-1-r].bins);pushWater(newest);paintRows(newest,0);
  autoScale(trace);
  let peak=0;for(let j=1;j<nb;j++)if(cur[j]>cur[peak])peak=j;
  const now=performance.now();while(specCount.length&&specCount[0]<now-1000)specCount.shift();
