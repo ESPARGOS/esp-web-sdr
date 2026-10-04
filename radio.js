@@ -14,7 +14,44 @@ function yieldTask(){
  return spectrumYield();
 }
 function fft(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]];}}for(let len=2;len<=n;len*=2){const a=-2*Math.PI/len,cr=Math.cos(a),ci=Math.sin(a);for(let i=0;i<n;i+=len){let wr=1,wi=0;for(let j=0;j<len/2;j++){const k=i+j,l=k+len/2,tr=re[l]*wr-im[l]*wi,ti=re[l]*wi+im[l]*wr;re[l]=re[k]-tr;im[l]=im[k]-ti;re[k]+=tr;im[k]+=ti;const next=wr*cr-wi*ci;wi=wr*ci+wi*cr;wr=next;}}}}
-function spectrum(iq,n){const sums=new Float64Array(n),window=Float64Array.from({length:n},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(n-1))),norm=window.reduce((a,b)=>a+b,0)**2,blocks=Math.floor(iq.length/2/n);for(let b=0;b<blocks;b++){const re=new Float64Array(n),im=new Float64Array(n);let mi=0,mq=0;for(let j=0;j<n;j++){mi+=iq[2*(b*n+j)];mq+=iq[2*(b*n+j)+1];}mi/=n;mq/=n;for(let j=0;j<n;j++){re[j]=(iq[2*(b*n+j)]-mi)*window[j];im[j]=(iq[2*(b*n+j)+1]-mq)*window[j];}fft(re,im);for(let j=0;j<n;j++)sums[j]+=(re[j]**2+im[j]**2)/norm/blocks;}return Array.from({length:n},(_,j)=>10*Math.log10(Math.max(1e-14,sums[(j+n/2)%n])));}
+// Only one capture is processed at a time; reuse the FFT workspace and window.
+let spectrumWorkspace;
+function spectrum(iq,n){
+ if(!spectrumWorkspace||spectrumWorkspace.n!==n){
+  const window=Float64Array.from({length:n},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(n-1)));
+  spectrumWorkspace={n,window,norm:window.reduce((a,b)=>a+b,0)**2,
+   sums:new Float64Array(n),re:new Float64Array(n),im:new Float64Array(n)};
+ }
+ const {window,norm,sums,re,im}=spectrumWorkspace,blocks=Math.floor(iq.length/2/n);
+ sums.fill(0);
+ for(let b=0;b<blocks;b++){
+  let mi=0,mq=0;for(let j=0;j<n;j++){mi+=iq[2*(b*n+j)];mq+=iq[2*(b*n+j)+1];}mi/=n;mq/=n;
+  for(let j=0;j<n;j++){re[j]=(iq[2*(b*n+j)]-mi)*window[j];im[j]=(iq[2*(b*n+j)+1]-mq)*window[j];}
+  fft(re,im);for(let j=0;j<n;j++)sums[j]+=re[j]**2+im[j]**2;
+ }
+ return Array.from({length:n},(_,j)=>10*Math.log10(Math.max(1e-14,blocks?sums[(j+n/2)%n]/norm/blocks:0)));
+}
+
+// Accumulate linear power until a row is complete. Frames can contain different
+// numbers of FFTs, so an average must be weighted by their actual FFT counts.
+class SpectrumAccumulator {
+ constructor(n,maxHold=false){this.power=new Float64Array(n);this.peak=new Float32Array(n).fill(-Infinity);this.weight=0;this.maxHold=maxHold;}
+ add(bins,weight=1){
+  if(!(weight>0))return;
+  for(let i=0;i<bins.length;i++){
+   if(bins[i]>this.peak[i])this.peak[i]=bins[i];
+   if(!this.maxHold)this.power[i]+=10**(bins[i]/10)*weight;
+  }
+  this.weight+=weight;
+ }
+ finish(){
+  if(!this.weight)return null;
+  const peak=this.peak.slice(),weight=this.weight;
+  const bins=this.maxHold?peak.slice():Float32Array.from(this.power,p=>10*Math.log10(Math.max(1e-14,p/weight)));
+  this.power.fill(0);this.peak.fill(-Infinity);this.weight=0;
+  return {bins,peak,weight};
+ }
+}
 class BurstSerialRadio {
  constructor(){this.maxSamples=16380;this.captureSamples=null;this.droppedCaptures=0;this.spectrumCrcErrors=0;this.baudRate=2000000;this.transport=null;this.supportsBaudChange=false;this.changingBaud=false;this.gainMin=0;this.gainMax=0;this.gainStep=1;this.bandwidthRange=null;this.sampleBits=[8,10];this.family="C5";this.hasExtendedTune=false;this.tuneRange=null;this.rxRates=[80000000,40000000,20000000,10000000,8000000,4000000];this.port=null;this.queue=[];this.queued=0;this.wake=null;this.reader=null;this.writer=null;this.failed=null;this.tail=Promise.resolve();this.sequence=0;this.last=null;this.frequency=null;this.filter=null;this.analogFilter=null;this.bandwidth=null;this.gainSetting=null;}
  run(f){const p=this.tail.then(f);this.tail=p.catch(()=>{});return p;}
