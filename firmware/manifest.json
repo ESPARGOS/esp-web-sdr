@@ -271,7 +271,7 @@
       "label": "ESP32-S3 (2 MB or larger)",
       "target": "esp32s3",
       "chip": "ESP32-S3",
-      "version": "spectrum-integration-20261001",
+      "version": "30867fb-s3-gain-fix-local",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -290,8 +290,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 20896,
-          "sha256": "1ac82009abdcb562aa226a61a470ba84f658a7fc34b12ac2adb423df27fb0dab",
-          "md5": "525e255341d30c57e915eaeb70e7a669"
+          "sha256": "b97c0332c58b2ec4afe3fcebeae3bf870a93ae3cf598562dcbc59a808b387cf7",
+          "md5": "22430b21eb25b57bdf2e74ceafdf4e8a"
         },
         {
           "name": "1-partition-table.bin",
@@ -303,12 +303,12 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 661808,
-          "sha256": "db7d0d21383ddfd6474ea8b6bda8b4d8dd071e11c9de80b158b9d4d8c8bb641f",
-          "md5": "827fce460a1215bf2ae7cd99b1cd07a1"
+          "size": 666896,
+          "sha256": "1eed42e0624a22b8f99fc3f0d099edf43d9c8401e18885ae55938809d8582f63",
+          "md5": "41e2c509bbadf82aeea04b7b03222f05"
         }
       ],
-      "build_date": "2026-10-01"
+      "build_date": "2026-10-02"
     },
     "esp32s31": {
       "revision": "esp32s31",
