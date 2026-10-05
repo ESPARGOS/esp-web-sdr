@@ -1,5 +1,5 @@
 {
   "profile": "esp32s31",
-  "version": "8f27ce40d41706aaf1b0f7558f18454a6e1be56f-dirty",
+  "version": "7876b65-dirty-throughput",
   "idf_commit": "26dd2948925d44f41e3bb614fb044b7a0839a242"
 }
