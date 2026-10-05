@@ -62,3 +62,11 @@ aside input:disabled,aside select:disabled{opacity:.5;cursor:not-allowed}#error 
 #chipStats{display:none;position:absolute;right:0;top:calc(100% + 8px);z-index:20;width:max-content;max-width:min(340px,calc(100vw - 24px));padding:12px 14px;border:1px solid var(--line);border-radius:7px;background:var(--panel);box-shadow:0 8px 24px #0006;color:#dee2e6;font-size:14px;font-weight:400;line-height:1.7;white-space:pre-line;text-align:left}
 #chipStats::before{content:'';position:absolute;left:0;right:0;top:-9px;height:9px}
 .chip-identity:hover #chipStats:not([hidden]),.chip-identity:focus-within #chipStats:not([hidden]){display:block}
+
+.gain-control{margin-top:17px;color:#c0c9cd}
+.gain-modes{display:flex;margin-top:7px}
+.gain-modes button{flex:1;min-width:0;border-radius:0;position:relative}
+.gain-modes button:first-child{border-radius:7px 0 0 7px}
+.gain-modes button:last-child{border-radius:0 7px 7px 0;margin-left:-1px}
+.gain-modes button[aria-pressed=true]{z-index:1;border-color:var(--accent);background:#183b29;color:#e5ffed}
+.gain-modes button:focus-visible{z-index:2;outline:2px solid var(--accent);outline-offset:3px}

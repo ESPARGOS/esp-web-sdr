@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "8f27ce40d41706aaf1b0f7558f18454a6e1be56f",
+  "version": "multiple releases",
   "variants": {
     "esp32": {
       "revision": "esp32",
@@ -404,7 +404,7 @@
       "label": "ESP32-S31 (2 MB or larger)",
       "target": "esp32s31",
       "chip": "ESP32-S31",
-      "version": "8f27ce40d41706aaf1b0f7558f18454a6e1be56f",
+      "version": "8f27ce40d41706aaf1b0f7558f18454a6e1be56f-dirty",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -436,9 +436,9 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 792960,
-          "sha256": "bc0067840890560a433e7423c655b121f8bb06906b826c0f5936c42b7c9f4160",
-          "md5": "48563c021b074b1f0041d4ad8430e47a"
+          "size": 792896,
+          "sha256": "02b8d6c7cdda7e1957dfa844dd01af6e7af8223aee771710256831dadce581c1",
+          "md5": "a503b386e287e287bfbdbe6a33a14e72"
         }
       ],
       "build_date": "2026-10-05"

@@ -1,24 +1,29 @@
-:root{color-scheme:dark;font:16px/1.45 Carlito,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif;background:#11191e;color:#dee2e6}
+:root{color-scheme:dark;font:16px/1.4 Carlito,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif;background:#11191e;color:#dee2e6}
 *{box-sizing:border-box}
-body{max-width:860px;margin:0 auto;padding:18px 16px}
+body{max-width:860px;margin:0 auto;padding:14px 16px}
 header{display:grid;grid-template-columns:180px minmax(0,1fr) 180px;align-items:center;gap:8px;text-align:center}
 header img{width:180px;height:36px;justify-self:start}
 h1{font-size:24px;margin:6px 0}
-h2{font-size:18px;margin:0 0 8px}
-p{margin:8px 0}
-ol{margin:8px 0;padding-left:24px}
-li+li{margin-top:4px}
-section{background:#293135;border:1px solid #394348;border-radius:10px;padding:16px;margin:12px 0}
+h2{font-size:18px;margin:0 0 6px}
+p{margin:6px 0}
+ol{margin:6px 0;padding-left:24px}
+li+li{margin-top:2px}
+section{background:#293135;border:1px solid #394348;border-radius:10px;padding:12px 14px;margin:10px 0}
 section>:last-child{margin-bottom:0}
 a{color:#37c964}
-.source-footer{margin-top:16px;padding-top:12px;border-top:1px solid #394348;font-size:16px}
+.source-footer{margin-top:12px;padding-top:8px;border-top:1px solid #394348;font-size:16px}
 .source-footer nav{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px 16px}
 .source-footer span{color:#adb8bd}
 .source-footer a{white-space:nowrap;text-underline-offset:3px}
 .source-footer a:hover{color:#dee2e6}
 .source-footer a:focus-visible{outline:2px solid #37c964;outline-offset:4px}
-button{font:inherit;padding:8px 14px;border:0;border-radius:7px;background:#37c964;color:#11191e;font-weight:700;cursor:pointer}
+button,.button{font:inherit;padding:8px 14px;border:0;border-radius:7px;background:#37c964;color:#11191e;font-weight:700;cursor:pointer}
+.button{display:inline-block;text-align:center;text-decoration:none}
+.button:focus-visible{outline:2px solid #dee2e6;outline-offset:3px}
 select{display:block;width:100%;font:inherit;padding:8px 10px;margin-top:4px;background:#11191e;color:#dee2e6;border:1px solid #617079;border-radius:7px}
+select:disabled{opacity:.55}
+select option{color:#dee2e6;background:#11191e}
+#revision[data-suggested=true],#revision option[data-suggested=true]{color:#37c964}
 button:disabled{opacity:.45;cursor:default}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .muted,small{color:#adb8bd}
@@ -27,8 +32,8 @@ details{margin:6px 0}
 #status{overflow-wrap:anywhere}
 #log{white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto;font:12px/1.6 monospace}
 #status[data-error=true]{color:#ffb5b5}
-dl{display:grid;grid-template-columns:90px 1fr;gap:4px 10px;margin:10px 0}
+dl{display:grid;grid-template-columns:90px 1fr;gap:4px 10px;margin:8px 0}
 dt{color:#adb8bd}
 dd{margin:0;overflow-wrap:anywhere}
 @media(max-width:700px){header{grid-template-columns:1fr}header h1{justify-self:stretch}}
-@media(max-width:500px){body{padding:12px}header{gap:8px}section{padding:12px}dl{grid-template-columns:65px minmax(0,1fr)}button{width:100%;min-height:44px}select{min-height:44px}}
+@media(max-width:500px){body{padding:12px}header{gap:8px}section{padding:12px}dl{grid-template-columns:65px minmax(0,1fr)}button,.button{width:100%;min-height:44px}select{min-height:44px}}

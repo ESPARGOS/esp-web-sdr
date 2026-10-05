@@ -6,7 +6,7 @@ const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
 const families=['ESP32','C2','H2','C3','C5','C6','C61','S2','S3','S31'];
 function fixture(family){
  const elements=new Map();
- const values={gainMode:'HARDWARE',gain:'40',frequency:'2412',rate:'80000000',bits:'8',fft:'2048',bandwidth:'20',specDetector:'mean',dcMode:'raw',specRow:'10'};
+ const values={gain:'40',frequency:'2412',rate:'80000000',bits:'8',fft:'2048',bandwidth:'20',specDetector:'mean',dcMode:'raw',specRow:'10'};
  const options={rate:[4000000,6400000,8000000,10000000,10666667,16000000,20000000,32000000,40000000,80000000],bits:[8,10],fft:[256,512,1024,2048,4096]};
  const get=id=>{
   if(!elements.has(id))elements.set(id,{value:values[id]||'',checked:false,options:(options[id]||[]).map(v=>({value:String(v)})),
@@ -19,13 +19,13 @@ function fixture(family){
   frequencyInput:()=>({min:100,max:6000,step:1}),frequencyWarning:()=>'',validFrequency:()=>true,
   canStreamSpectrum:true,spectrumProfiles:r=>profiles.filter(p=>p[0]===r),spectrumContinuous:()=>false,specCapabilities:{profiles}};
  const context=vm.createContext({radio,document:{getElementById:get,querySelectorAll:()=>[]},
-  spectrumMode:false,connected:true,paused:false,tuneFrequency:2412,analogBandwidth:20,labels(){},clear(){},serialWarning(){}});
+  savedPort:()=>null,spectrumMode:false,connected:true,paused:false,tuneFrequency:2412,analogBandwidth:20,labels(){},clear(){},serialWarning(){}});
  vm.runInContext(app.slice(0,app.indexOf('let connected=')),context);
  vm.runInContext(app.slice(app.indexOf('function state(){'),app.indexOf('function bandwidthChanged()')),context);
  vm.runInContext(app.slice(app.indexOf('function loOffset('),app.indexOf("$('dcMode').onchange=")),context);
  vm.runInContext(app.split('\n').find(l=>l.startsWith('function config()')),context);
  vm.runInContext(app.slice(app.indexOf('function specSizes('),app.indexOf('async function specLoop()')),context);
- for(const start of ["$('iqMode').onclick=","$('specMode').onclick=","for(const id of ['rate','bits','fft'])"])
+ for(const start of ["$('iqMode').onclick=","$('specMode').onclick=","$('gainAgc').onclick=","$('gainManual').onclick=","for(const id of ['rate','bits','fft'])"])
   vm.runInContext(app.split('\n').find(l=>l.startsWith(start)),context);
  vm.runInContext('applyRadioProfile()',context);
  return {context,get,radio,config:()=>vm.runInContext('specConfig()',context)};
@@ -35,7 +35,10 @@ for(const family of families)test(`${family}: spectrum toggles and rate changes 
  assert.equal(c.analogBandwidth,20);assert.equal(get('bandwidth').value,20);assert.equal(get('bandwidthOpen').checked,false);
  c.tuneFrequency=2442;
  for(const gainMode of ['HARDWARE','MANUAL'])for(const bandwidth of [17,0]){
-  get('gainMode').value=gainMode;get('gain').value='37';
+  get(gainMode==='HARDWARE'?'gainAgc':'gainManual').onclick();get('gain').value='37';
+  assert.equal(get('gainAgc')['aria-pressed'],String(gainMode==='HARDWARE'));
+  assert.equal(get('gainManual')['aria-pressed'],String(gainMode==='MANUAL'));
+  assert.equal(get('gain').disabled,gainMode!=='MANUAL');
   c.analogBandwidth=bandwidth;get('bandwidth').value='17';get('bandwidthOpen').checked=bandwidth===0;
   for(const enabled of [true,false]){
    get(enabled?'specMode':'iqMode').onclick();
@@ -47,8 +50,20 @@ for(const family of families)test(`${family}: spectrum toggles and rate changes 
     const config=f.config();
     assert.equal(c.analogBandwidth,bandwidth);assert.equal(get('bandwidthOpen').checked,bandwidth===0);assert.equal(get('bandwidth').value,'17');
     assert.equal(config.bandwidth,bandwidth);assert.equal(config.frequency,2442);assert.equal(config.rate,rate);
-    assert.equal(config.gainMode,gainMode);assert.equal(config.gain,37);assert.equal(get('gainMode').value,gainMode);assert.equal(get('bits').value,'8');
+    assert.equal(config.gainMode,gainMode);assert.equal(config.gain,37);assert.equal(get('bits').value,'8');
    }
   }
+ }
+});
+
+test('gain buttons respect AGC support, disconnection and baud changes',()=>{
+ const {context,get,radio,config}=fixture('C61');
+ radio.hasHardwareAgc=false;vm.runInContext('applyRadioProfile()',context);
+ assert.equal(config().gainMode,'MANUAL');assert.equal(get('gainAgc').disabled,true);
+ assert.equal(get('gainManual').disabled,false);assert.equal(get('gain').disabled,false);
+ get('gainAgc').onclick();assert.equal(config().gainMode,'MANUAL');
+ for(const update of [()=>{radio.changingBaud=true;},()=>{radio.changingBaud=false;context.connected=false;}]){
+  update();vm.runInContext('state()',context);
+  assert.equal(get('gainAgc').disabled,true);assert.equal(get('gainManual').disabled,true);assert.equal(get('gain').disabled,true);
  }
 });

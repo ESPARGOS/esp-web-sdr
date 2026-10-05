@@ -1,11 +1,11 @@
 'use strict';
 const $=id=>document.getElementById(id);
+let gainMode='HARDWARE';
 function preferredSampleRate(rates=radio.rxRates){return rates.includes(80000000)?80000000:Math.max(...rates);}
 function applyRadioProfile(){
  const tuning=radio.frequencyInput();$('frequency').min=tuning.min;$('frequency').max=tuning.max;$('frequency').step=tuning.step;
  $('gain').min=radio.gainMin;$('gain').max=radio.gainMax;$('gain').step=radio.gainStep;$('gain').value=Math.min(Math.max(40,radio.gainMin),radio.gainMax);$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;
- $('gainMode').querySelector('[value=HARDWARE]').disabled=!radio.hasHardwareAgc;
- if(!radio.hasGain||(!radio.hasHardwareAgc&&$('gainMode').value==='HARDWARE'))$('gainMode').value='MANUAL';
+ if(!radio.hasGain||(!radio.hasHardwareAgc&&gainMode==='HARDWARE'))gainMode='MANUAL';
  for(const [id,rates] of [['rate',radio.rxRates]]){
   for(const o of $(id).options)o.disabled=!rates.includes(Number(o.value));
   $(id).value=String(preferredSampleRate(rates));
@@ -89,7 +89,7 @@ function error(e,communication=false){
  const box=$('error');box.textContent=e?.message||e;box.hidden=!e;
  if(e&&communication){const link=document.createElement('a');link.href='/flash.html';link.textContent='Install / update ESP-SDR firmware';box.append(' ',link);}
 }
-function config(){return {frequency:loFrequency(),rate:Number($('rate').value),bits:Number($('bits').value),fft:Number($('fft').value),bandwidth:analogBandwidth,gainMode:$('gainMode').value,gain:Number($('gain').value),trigger:{mode:'free'}};}
+function config(){return {frequency:loFrequency(),rate:Number($('rate').value),bits:Number($('bits').value),fft:Number($('fft').value),bandwidth:analogBandwidth,gainMode:gainMode,gain:Number($('gain').value),trigger:{mode:'free'}};}
 function clear(){trace=null;maximum=null;waterHist=[];if(!keepView)view={a:0,b:1};keepView=false;wc.fillStyle='#11191e';wc.fillRect(0,0,water.width,water.height);draw();}
 function resize(){const d=Math.min(devicePixelRatio||1,2);spec.width=Math.round(spec.clientWidth*d);spec.height=Math.round(spec.clientHeight*d);water.width=Math.round(water.clientWidth);water.height=Math.round(water.clientHeight);wc.fillStyle='#11191e';wc.fillRect(0,0,water.width,water.height);redrawWater();draw();labels();}
 function fmtHz(hz){const a=Math.abs(hz);return a>=1e9?(hz/1e9).toFixed(6)+' GHz':a>=1e6?(hz/1e6).toFixed(3)+' MHz':a>=1e3?(hz/1e3).toFixed(1)+' kHz':hz.toFixed(0)+' Hz';}
@@ -187,8 +187,10 @@ function state(){
  $('pause').disabled=!connected||!!radio.changingBaud;$('pause').textContent=paused?'Resume':'Pause';
  
  for(const b of document.querySelectorAll('[data-freq]'))b.disabled=!connected||!!radio.changingBaud||(+b.dataset.freq===5500&&radio.family!=='C5')||!radio.validFrequency(+b.dataset.freq);
- $('gainMode').querySelector('[value=HARDWARE]').disabled=connected&&!radio.hasHardwareAgc;$('gainMode').disabled=!connected||!!radio.changingBaud||!radio.hasGain;
- $('gain').disabled=!connected||!!radio.changingBaud||$('gainMode').value!=='MANUAL'||!radio.hasGain;
+ const gainDisabled=!connected||!!radio.changingBaud||!radio.hasGain;
+ $('gainAgc').disabled=gainDisabled||!radio.hasHardwareAgc;$('gainManual').disabled=gainDisabled;
+ $('gainAgc').setAttribute('aria-pressed',String(gainMode==='HARDWARE'));$('gainManual').setAttribute('aria-pressed',String(gainMode==='MANUAL'));
+ $('gain').disabled=!connected||!!radio.changingBaud||gainMode!=='MANUAL'||!radio.hasGain;
  $('bandwidthOpen').disabled=!connected||!!radio.changingBaud||!radio.bandwidthRange;$('bandwidth').disabled=!connected||!!radio.changingBaud||!radio.bandwidthRange||$('bandwidthOpen').checked;
 }
 function bandwidthChanged(){if(!$('bandwidthOpen').checked&&!$('bandwidth').checkValidity()){$('bandwidth').reportValidity();return;}analogBandwidth=$('bandwidthOpen').checked?0:Number($('bandwidth').value);clear();}
@@ -199,7 +201,9 @@ $('bandwidth').closest('label').addEventListener('wheel',e=>{
  if(e.deltaY<0)input.stepUp();else input.stepDown();
  if(input.value!==previous)bandwidthChanged();
 },{passive:false});
-$('gainMode').onchange=()=>{state();clear();};$('gain').oninput=()=>{$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;clear();};
+$('gainAgc').onclick=()=>{if($('gainAgc').disabled)return;gainMode='HARDWARE';state();clear();};
+$('gainManual').onclick=()=>{if($('gainManual').disabled)return;gainMode='MANUAL';state();clear();};
+$('gain').oninput=()=>{$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;clear();};
 radio.onCaptureError=serialWarning;
 $('lowerBaud').onclick=async()=>{
  if(!connected||radio.changingBaud)return;

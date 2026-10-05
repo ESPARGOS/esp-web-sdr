@@ -13,8 +13,14 @@ The installer checks image sizes and SHA-256 hashes before writing, validates
 chip and flash capacity, and verifies writes through MD5 readback. These checks
 detect corruption; they are not firmware signatures.
 
-UART connections for serial-viewer profiles synchronize at the ROM's 115200 baud, then must switch to
-2000000 baud before installation is enabled. If the loader falls back to ROM
+Connect before choosing firmware. The detected chip, flash size and crystal
+select the default and mark matching profiles in green with a checkmark; all profiles remain
+selectable, including alternative applications for the same chip. A matching
+`?board=` link keeps its requested profile. Incompatible images are rejected
+before writing, without disconnecting the device.
+
+Connections synchronize at the ROM's 115200 baud. When installation starts,
+UART connections for serial-viewer profiles must switch to 2000000 baud. If the loader falls back to ROM
 speed or cannot change speed, the installer disconnects and displays
 "UART too slow for ESP-WebSDR, choose a different dev kit". Native Espressif USB
 ports (USB vendor ID 0x303a) are exempt from this UART requirement.
@@ -35,7 +41,7 @@ its watchdog reset due to a USB controller issue.
 
 ## S31 Ethernet / USB profile
 
-Select **ESP32-S31 Function-CoreBoard · Ethernet / USB for SoapyESPSDR** before
+Select **ESP32-S31 Function-CoreBoard · Ethernet / USB for SoapyESPSDR** after
 connecting. This receive-only profile is for SoapyESPSDR, not the ESP-WebSDR
 serial viewer. Its recovery UART flashes at 115200 baud. Use Ethernet or the
 separate native high-speed USB connector for samples, and open the board's

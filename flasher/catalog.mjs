@@ -70,3 +70,15 @@ export function checkCrystal(variant, detected) {
  if(variant.xtal_mhz!==undefined&&variant.xtal_mhz!==detected)
   throw Error(`Selected firmware requires a ${variant.xtal_mhz} MHz crystal; detected ${detected} MHz. Choose matching firmware.`);
 }
+
+export function flashMatches(variant, detected) {
+ const actual=/^(\d+)MB$/.exec(detected),required=/^(\d+)MB$/.exec(variant.flash_size);
+ if(!actual||!required)return false;
+ return variant.flash_size_policy==='minimum'?Number(actual[1])>=Number(required[1]):detected===variant.flash_size;
+}
+
+// Suggestions never remove profiles: multiple applications can target one chip.
+export function suggestedProfiles(variants, chip, flashSize, crystal) {
+ return Object.entries(variants).filter(([,v])=>v.chip===chip&&v.browser_supported!==false&&
+  flashMatches(v,flashSize)&&(v.xtal_mhz===undefined||v.xtal_mhz===crystal)).map(([id])=>id);
+}
