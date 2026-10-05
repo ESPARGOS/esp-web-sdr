@@ -1,5 +1,5 @@
 {
   "profile": "esp32c2",
-  "version": "c2-controls-local",
+  "version": "8f27ce40d41706aaf1b0f7558f18454a6e1be56f",
   "idf_commit": "25fe69f946311abdaf9ad56591f25fedbc20ac98"
 }
