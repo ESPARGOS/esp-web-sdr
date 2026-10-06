@@ -70,3 +70,15 @@ aside input:disabled,aside select:disabled{opacity:.5;cursor:not-allowed}#error 
 .gain-modes button:last-child{border-radius:0 7px 7px 0;margin-left:-1px}
 .gain-modes button[aria-pressed=true]{z-index:1;border-color:var(--accent);background:#183b29;color:#e5ffed}
 .gain-modes button:focus-visible{z-index:2;outline:2px solid var(--accent);outline-offset:3px}
+
+/* Compact three-position GPIO controls, below the receiver/display controls. */
+#gpioControls{grid-column:1/-1;border-top:1px solid var(--line);margin-top:24px;padding-top:16px}
+#gpioControls[hidden]{display:none}
+#gpioControls summary{color:var(--muted);font-size:14px;font-weight:650;cursor:pointer}
+.gpio-help{font-size:13px;color:var(--muted);margin:10px 0}
+#gpioPins{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+.gpio-row{display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;font-size:13px}
+.gpio-row>span{flex:1;text-align:right;white-space:nowrap}
+.gpio-modes{margin:0}
+.gpio-modes button{flex:none;min-width:26px;padding:3px 6px;font-size:13px;line-height:1.5}
+.gpio-modes button+button{margin-left:-1px}

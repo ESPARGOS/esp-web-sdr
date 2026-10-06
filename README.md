@@ -82,3 +82,17 @@ the widest filter setting. Lower rates are hardware subsampling without
 automatic anti-alias filtering. Continuous capture is not advertised. On a TX/RX-only adapter,
 enter download mode with BOOT/RESET before installation and reset afterward;
 the adapter cannot control the board's reset pins.
+
+## GPIO controls
+
+Firmware advertising the `GPIO` capability exposes a collapsed GPIO section at
+the bottom of the left panel. Each available pin has a compact Z / 0 / 1 button
+group: high impedance (no internal pulls), drive low, or drive high. Pins start
+in Z when firmware boots. Connecting reads existing settings without changing
+them; settings last until reboot and are not stored in the browser.
+
+The pin list comes from firmware and excludes memory and active transport pins.
+Numbers are chip GPIO numbers; board wiring and exposed pins vary. A change
+finishes the current capture or stops/drains spectrum streaming, applies the
+setting, then resumes if reception was running. The selected button changes
+only after firmware acknowledges the setting. Older firmware hides the section.

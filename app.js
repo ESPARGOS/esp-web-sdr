@@ -22,6 +22,7 @@ function applyRadioProfile(){
 }
 let spectrumMode=false,connectionBusy=false;
 let connected=false,paused=false,latest=null,trace=null,maximum=null,previous=0,key='',running=false,tuneFrequency=2412,analogBandwidth=20;
+let loopDone=Promise.resolve();
 const spec=$('spectrum'),water=$('waterfall'),sc=spec.getContext('2d'),wc=water.getContext('2d');
 const lut=Array.from({length:256},(_,i)=>{const stops=[[3,8,23],[18,31,81],[38,63,153],[30,139,181],[66,213,174],[217,237,103],[255,162,61],[255,244,228]];const p=i/255*(stops.length-1),j=Math.min(stops.length-2,Math.floor(p)),t=p-j;return stops[j].map((v,k)=>Math.round(v*(1-t)+stops[j+1][k]*t));});
 
@@ -114,8 +115,9 @@ function render(f){const k=[f.frequency,f.rate,f.bits,f.fft,f.bandwidth,f.gainMo
 wc.drawImage(water,0,0,water.width,water.height-1,0,1,water.width,water.height-1);pushWater([Float32Array.from(f.spectrum)]);paintRows([waterHist[0]],0);autoScale(trace);
 $('gainStatus').textContent=f.gain_actual?.mode==='HARDWARE'?'Hardware AGC':f.gain_actual?`Manual · index ${f.gain_actual.index}`:'Update SDR firmware for gain control.';$('empty').hidden=true;labels(f);$('fpsLabel').textContent='frames/s';$('throughputLabel').textContent='kS/s delivered';$('latencyLabel').textContent='ms / capture + transfer';const now=performance.now();$('fps').textContent=previous?(1000/(now-previous)).toFixed(1):'—';previous=now;$('throughput').textContent=f.delivered_ksps.toFixed(1);$('latency').textContent=f.elapsed_ms.toFixed(1);$('peak').textContent=(f.peak_hz/1e6).toFixed(4);$('crc').textContent=`CRC OK · #${f.sequence}${f.dropped_captures?` · ${f.dropped_captures} dropped · ${f.samples} samples`:''}`;}
 async function loop(){
- if(running)return;
+ if(running)return loopDone;
  running=true;
+ let finishLoop;loopDone=new Promise(resolve=>{finishLoop=resolve;});
  try{
   while(connected&&!paused){
    try{
@@ -136,13 +138,13 @@ async function loop(){
    }
    if(connected&&!paused)await new Promise(r=>setTimeout(r,10));
   }
- }finally{running=false;}
+ }finally{running=false;finishLoop();}
 }
 function serialWarning(){
  const warning=$('serialWarning'),button=$('lowerBaud');
  warning.hidden=!connected||radio.droppedCaptures+radio.spectrumCrcErrors<3;
  const available=radio.supportsBaudChange&&radio.transport==='UART'&&radio.baudRate>1000000;
- button.hidden=!available;button.disabled=!!radio.changingBaud;
+ button.hidden=!available;button.disabled=(!!radio.changingBaud||!!radio.changingGpio);
  button.textContent=radio.changingBaud?'Switching…':'Switch to 1 MBaud';
  $('serialWarningText').textContent=available
   ?'Repeated capture / CRC errors. A slower serial connection may help; the RF sample rate stays the same.'
@@ -152,24 +154,25 @@ function serialWarning(){
    :'Repeated capture / CRC errors. Check the USB connection. Updated firmware enables a slower UART connection.';
 }
 function state(){
+ updateGpioControls();
  if(!connected||!spectrumMode)$('chipStats').hidden=true;
  serialWarning();
  $('baudStatus').hidden=!connected||radio.transport!=='UART';
  $('baudStatus').textContent=radio.transport==='UART'?`${radio.baudRate/1000000} MBaud`:'';
- $('connect').disabled=connectionBusy||!!radio.changingBaud;
+ $('connect').disabled=connectionBusy||(!!radio.changingBaud||!!radio.changingGpio);
  $('openOther').disabled=connected||$('connect').disabled;
  $('openRecent').disabled=$('openOther').disabled||!savedPort();
  const warning=connected?radio.frequencyWarning(tuneFrequency):'';$('tuningWarning').textContent=warning;$('tuningWarning').hidden=!warning;$('frequency').classList.toggle('offband',!!warning);$('frequency').title=warning;
- for(const control of document.querySelectorAll('aside input,aside select'))control.disabled=!connected||!!radio.changingBaud;
+ for(const control of document.querySelectorAll('aside input,aside select'))control.disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio);
  const specOk=connected&&radio.canStreamSpectrum;
- $('specControls').hidden=!specOk;$('specMode').disabled=!specOk||!!radio.changingBaud;
- $('iqMode').disabled=!connected||!!radio.changingBaud;
+ $('specControls').hidden=!specOk;$('specMode').disabled=!specOk||(!!radio.changingBaud||!!radio.changingGpio);
+ $('iqMode').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio);
  if(!specOk)spectrumMode=false;
  $('iqMode').setAttribute('aria-pressed',String(!spectrumMode));$('specMode').setAttribute('aria-pressed',String(spectrumMode));
  $('iqControls').hidden=spectrumMode;$('specOptions').hidden=!spectrumMode;
  const options=$(spectrumMode?'specOptions':'iqControls');
  if($('fftControl').parentElement!==options)options.prepend($('fftControl'));
- $('specRow').disabled=!specOk||!spectrumMode||!!radio.changingBaud;$('specDetector').disabled=$('specRow').disabled;
+ $('specRow').disabled=!specOk||!spectrumMode||(!!radio.changingBaud||!!radio.changingGpio);$('specDetector').disabled=$('specRow').disabled;
  if(connected&&spectrumMode)$('bits').disabled=true;
  {const specOn=connected&&spectrumMode;
   for(const o of $('rate').options){o.disabled=specOn&&!radio.spectrumProfiles(Number(o.value)).length;o.hidden=o.disabled;}
@@ -184,14 +187,61 @@ function state(){
  $('deviceModel').textContent=connected?(radio.deviceName||'ESP32-'+radio.family):'';$('deviceModel').hidden=!connected;$('chipIdentity').hidden=!connected;
  $('status').textContent=connected?(paused?'Paused':'Receiving'):'Disconnected';
  $('connect').textContent=connected?'Disconnect':'Connect ESP-SDR';$('light').classList.toggle('on',connected&&!paused);
- $('pause').disabled=!connected||!!radio.changingBaud;$('pause').textContent=paused?'Resume':'Pause';
+ $('pause').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio);$('pause').textContent=paused?'Resume':'Pause';
  
- for(const b of document.querySelectorAll('[data-freq]'))b.disabled=!connected||!!radio.changingBaud||(+b.dataset.freq===5500&&radio.family!=='C5')||!radio.validFrequency(+b.dataset.freq);
- const gainDisabled=!connected||!!radio.changingBaud||!radio.hasGain;
+ for(const b of document.querySelectorAll('[data-freq]'))b.disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||(+b.dataset.freq===5500&&radio.family!=='C5')||!radio.validFrequency(+b.dataset.freq);
+ const gainDisabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||!radio.hasGain;
  $('gainAgc').disabled=gainDisabled||!radio.hasHardwareAgc;$('gainManual').disabled=gainDisabled;
  $('gainAgc').setAttribute('aria-pressed',String(gainMode==='HARDWARE'));$('gainManual').setAttribute('aria-pressed',String(gainMode==='MANUAL'));
- $('gain').disabled=!connected||!!radio.changingBaud||gainMode!=='MANUAL'||!radio.hasGain;
- $('bandwidthOpen').disabled=!connected||!!radio.changingBaud||!radio.bandwidthRange;$('bandwidth').disabled=!connected||!!radio.changingBaud||!radio.bandwidthRange||$('bandwidthOpen').checked;
+ $('gain').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||gainMode!=='MANUAL'||!radio.hasGain;
+ $('bandwidthOpen').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||!radio.bandwidthRange;$('bandwidth').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||!radio.bandwidthRange||$('bandwidthOpen').checked;
+}
+function updateGpioControls(){
+ const panel=$('gpioControls');panel.hidden=!connected||!radio.hasGpio;
+ if(panel.hidden)return;
+ const list=$('gpioPins'),pins=radio.gpioPins;
+ const signature=pins.map(p=>p.pin).join(',');
+ if(list.dataset.pins!==signature){
+  list.replaceChildren();list.dataset.pins=signature;
+  for(const {pin} of pins){
+   const row=document.createElement('div');row.className='gpio-row';
+   const label=document.createElement('span');label.id=`gpioLabel${pin}`;label.textContent=`GPIO ${pin}`;
+   const buttons=document.createElement('div');buttons.className='gain-modes gpio-modes';
+   buttons.setAttribute('role','group');buttons.setAttribute('aria-labelledby',label.id);
+   for(const value of ['Z','0','1']){
+    const button=document.createElement('button');button.type='button';button.textContent=value;
+    button.dataset.pin=String(pin);button.dataset.state=value;
+    button.title=value==='Z'?'High impedance (no pulls)':value==='0'?'Drive low':'Drive high';
+    button.onclick=()=>changeGpio(pin,value);buttons.append(button);
+   }
+   row.append(label,buttons);list.append(row);
+  }
+ }
+ for(const button of list.querySelectorAll('button')){
+  const entry=pins.find(p=>p.pin===Number(button.dataset.pin));
+  button.setAttribute('aria-pressed',String(entry.state===button.dataset.state));
+  button.disabled=connectionBusy||!!radio.changingBaud||!!radio.changingGpio;
+ }
+ $('gpioEmpty').hidden=pins.length!==0;
+}
+async function changeGpio(pin,value){
+ if(!connected||connectionBusy||radio.changingBaud||radio.changingGpio)return;
+ const wasPaused=paused;let succeeded=false;paused=true;radio.changingGpio=true;state();
+ try{
+  // Let the current burst finish, or stop/drain a spectrum stream, before
+  // issuing a text command. Keep the acknowledged selection until success.
+  await loopDone;
+  if(!connected||radio.failed)throw radio.failed||Error('Disconnected');
+  await radio.setGpio(pin,value);
+  clear();error('');succeeded=true;
+ }catch(e){
+  if(radio.failed){connected=false;await radio.run(()=>radio.close()).catch(()=>{});}
+  error(e);
+ }
+ finally{
+  radio.changingGpio=false;paused=succeeded?wasPaused:true;previous=0;state();
+  if(connected&&!paused)loop();
+ }
 }
 function bandwidthChanged(){if(!$('bandwidthOpen').checked&&!$('bandwidth').checkValidity()){$('bandwidth').reportValidity();return;}analogBandwidth=$('bandwidthOpen').checked?0:Number($('bandwidth').value);clear();}
 $('bandwidthOpen').onchange=()=>{state();bandwidthChanged();};$('bandwidth').onchange=bandwidthChanged;
@@ -206,7 +256,7 @@ $('gainManual').onclick=()=>{if($('gainManual').disabled)return;gainMode='MANUAL
 $('gain').oninput=()=>{$('gainValue').textContent=`${$('gain').value} / ${radio.gainMax}`;clear();};
 radio.onCaptureError=serialWarning;
 $('lowerBaud').onclick=async()=>{
- if(!connected||radio.changingBaud)return;
+ if(!connected||radio.changingBaud||radio.changingGpio)return;
  paused=true;radio.changingBaud=true;state();
  try{
   await radio.setBaudRate(1000000);
@@ -243,7 +293,7 @@ $('connectMenu').onkeydown=e=>{
 };
 document.addEventListener('click',e=>{if(!e.target.closest('.connect-buttons'))closeConnectMenu();});
 document.addEventListener('focusin',e=>{if(!e.target.closest('.connect-buttons'))closeConnectMenu();});
-$('connect').onclick=async(ev)=>{closeConnectMenu();if(connectionBusy||radio.changingBaud||(ev?.auto&&connected))return;connectionBusy=true;state();try{if(connected){connected=false;state();const done=api('disconnect',{});
+$('connect').onclick=async(ev)=>{closeConnectMenu();if(connectionBusy||radio.changingBaud||radio.changingGpio||(ev?.auto&&connected))return;connectionBusy=true;state();try{if(connected){connected=false;state();const done=api('disconnect',{});
  const timedOut=await Promise.race([done.then(()=>false),new Promise(r=>setTimeout(()=>r(true),2000))]);
  if(timedOut){await radio.closePort().catch(()=>{});await done.catch(()=>{});}}else{const port=await choosePort(ev);if(!port)return;await api('connect',{port});rememberPort(port);connected=true;spectrumMode=radio.canStreamSpectrum;applyRadioProfile();paused=false;previous=0;latest=null;clear();loop();}error('');}catch(e){error(e,!['NotFoundError','AbortError'].includes(e?.name));}finally{connectionBusy=false;state();}};
 $('pause').onclick=()=>{paused=!paused;previous=0;state();if(!paused){error('');loop();}};$('clear').onclick=clear;
