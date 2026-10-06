@@ -82,3 +82,7 @@ aside input:disabled,aside select:disabled{opacity:.5;cursor:not-allowed}#error 
 .gpio-modes{margin:0}
 .gpio-modes button{flex:none;min-width:26px;padding:3px 6px;font-size:13px;line-height:1.5}
 .gpio-modes button+button{margin-left:-1px}
+
+#firmwareWarning{background:#39351f;border:1px solid #81723a;border-radius:7px;padding:10px 12px;margin-bottom:14px;color:#eedda2;font-size:14px}
+#firmwareWarning[hidden]{display:none}
+#firmwareWarning a{white-space:nowrap;color:#eedda2;text-decoration:underline}

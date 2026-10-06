@@ -21,6 +21,7 @@ function applyRadioProfile(){
  state();labels();
 }
 let spectrumMode=false,connectionBusy=false;
+let firmwareCheck=0,firmwareUpdate=null;
 let connected=false,paused=false,latest=null,trace=null,maximum=null,previous=0,key='',running=false,tuneFrequency=2412,analogBandwidth=20;
 let loopDone=Promise.resolve();
 const spec=$('spectrum'),water=$('waterfall'),sc=spec.getContext('2d'),wc=water.getContext('2d');
@@ -154,6 +155,7 @@ function serialWarning(){
    :'Repeated capture / CRC errors. Check the USB connection. Updated firmware enables a slower UART connection.';
 }
 function state(){
+ firmwareWarning();
  updateGpioControls();
  if(!connected||!spectrumMode)$('chipStats').hidden=true;
  serialWarning();
@@ -195,6 +197,33 @@ function state(){
  $('gainAgc').setAttribute('aria-pressed',String(gainMode==='HARDWARE'));$('gainManual').setAttribute('aria-pressed',String(gainMode==='MANUAL'));
  $('gain').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||gainMode!=='MANUAL'||!radio.hasGain;
  $('bandwidthOpen').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||!radio.bandwidthRange;$('bandwidth').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||!radio.bandwidthRange||$('bandwidthOpen').checked;
+}
+function firmwareWarning(){
+ const version=radio.firmwareVersion,panel=$('firmwareWarning');
+ panel.hidden=!connected||!version;
+ $('deviceModel').title=connected&&version?.status==='known'?`Firmware: ${version.revision}\nBuilt: ${version.build_timestamp}`:'';
+ if(panel.hidden)return;
+ const result=version.status==='missing'
+  ?{status:'outdated',message:'This firmware does not report its version. Update the firmware to the latest build.'}
+  :firmwareUpdate;
+ panel.hidden=result?.status!=='outdated';
+ $('firmwareWarningText').textContent=result?.message||'';
+}
+async function checkFirmwareUpdate(){
+ const check=++firmwareCheck,installed=radio.firmwareVersion;
+ firmwareUpdate=null;firmwareWarning();
+ if(!installed||installed.status==='missing')return;
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),5000);
+ let result;
+ try{
+  const response=await fetch('firmware/manifest.json',{cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw Error('Firmware catalog unavailable');
+  result=firmwareUpdateStatus(installed,await response.json());
+ }catch{result={status:'unknown',message:'Firmware update check unavailable.'};}
+ finally{clearTimeout(timeout);}
+ // An old connection's request must never update a newly connected device.
+ if(check!==firmwareCheck||!connected||radio.firmwareVersion!==installed)return;
+ firmwareUpdate=result;firmwareWarning();
 }
 function updateGpioControls(){
  const panel=$('gpioControls');panel.hidden=!connected||!radio.hasGpio;
@@ -260,6 +289,7 @@ $('lowerBaud').onclick=async()=>{
  paused=true;radio.changingBaud=true;state();
  try{
   await radio.setBaudRate(1000000);
+  checkFirmwareUpdate();
   paused=false;previous=0;latest=null;clear();error('');
  }catch(e){connected=!!radio.port&&!radio.failed;error(e,!connected);}
  finally{radio.changingBaud=false;state();if(connected&&!paused)loop();}
@@ -295,7 +325,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('.connect-buttons'))c
 document.addEventListener('focusin',e=>{if(!e.target.closest('.connect-buttons'))closeConnectMenu();});
 $('connect').onclick=async(ev)=>{closeConnectMenu();if(connectionBusy||radio.changingBaud||radio.changingGpio||(ev?.auto&&connected))return;connectionBusy=true;state();try{if(connected){connected=false;state();const done=api('disconnect',{});
  const timedOut=await Promise.race([done.then(()=>false),new Promise(r=>setTimeout(()=>r(true),2000))]);
- if(timedOut){await radio.closePort().catch(()=>{});await done.catch(()=>{});}}else{const port=await choosePort(ev);if(!port)return;await api('connect',{port});rememberPort(port);connected=true;spectrumMode=radio.canStreamSpectrum;applyRadioProfile();paused=false;previous=0;latest=null;clear();loop();}error('');}catch(e){error(e,!['NotFoundError','AbortError'].includes(e?.name));}finally{connectionBusy=false;state();}};
+ if(timedOut){await radio.closePort().catch(()=>{});await done.catch(()=>{});}}else{const port=await choosePort(ev);if(!port)return;await api('connect',{port});rememberPort(port);connected=true;checkFirmwareUpdate();spectrumMode=radio.canStreamSpectrum;applyRadioProfile();paused=false;previous=0;latest=null;clear();loop();}error('');}catch(e){error(e,!['NotFoundError','AbortError'].includes(e?.name));}finally{connectionBusy=false;state();}};
 $('pause').onclick=()=>{paused=!paused;previous=0;state();if(!paused){error('');loop();}};$('clear').onclick=clear;
 for(const id of ['rate','bits','fft'])$(id).onchange=()=>{state();labels();};
 $('frequency').onchange=()=>{tuneFrequency=Number($('frequency').value);labels();};

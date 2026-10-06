@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "version": "multiple releases",
+  "version": "10f9b3c-dirty-version",
   "variants": {
     "esp32": {
       "revision": "esp32",
       "label": "ESP32 (2 MB or larger, UART)",
       "target": "esp32",
       "chip": "ESP32",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -26,8 +26,8 @@
           "name": "0-bootloader.bin",
           "offset": 4096,
           "size": 25792,
-          "sha256": "2b45eb93f39724039d8776aa9b88ecec87680fdfe4822011b4454eeb292b27fd",
-          "md5": "a67ac57e57e02cb14f1e9a7ff084e28d"
+          "sha256": "aa84a6f462e0fd5e58beb1e489e98bce64a510799cc7bd412a604b7f0e79fa10",
+          "md5": "84e0f42b0e31762976524c5763c31422"
         },
         {
           "name": "1-partition-table.bin",
@@ -39,19 +39,21 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 664816,
-          "sha256": "ef49221701141a36547ce9e1f91e81e255a4bc5fcc9b49e7c6f26a50c784932c",
-          "md5": "1134501c4091de6f2f4d4c9072ecec01"
+          "size": 671136,
+          "sha256": "d01f2b26014096eaef6671d8f4d442a1fca3bd355c843b8d83b86357a26e269d",
+          "md5": "e927f5d611ea5cad03e474b7f3c80718"
         }
       ],
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:18:00Z"
     },
     "esp32c2": {
       "revision": "esp32c2",
       "label": "ESP32-C2 (26 MHz crystal, 2 MB or larger, UART)",
       "target": "esp32c2",
       "chip": "ESP32-C2",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -70,8 +72,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 19888,
-          "sha256": "c0117f718fa99a54a41d27f316ab920e527542512725756d2d433eff805dfbec",
-          "md5": "dc4e31e9fe03df84c4ff93e803b506c8"
+          "sha256": "96fe36019ab72c7fb874ec0e4dec448e4ec0b82b2ae23589356dd17c7bac11bd",
+          "md5": "b4a13f129b62cabdcb227e370d04bdbd"
         },
         {
           "name": "1-partition-table.bin",
@@ -83,20 +85,22 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 602992,
-          "sha256": "8c825f6c8076ab535bfeadde6b51d175ce8655b37a41fd05ada023e7b4e506a3",
-          "md5": "09a51e60ea9d9b17899d863797d9ab8a"
+          "size": 608256,
+          "sha256": "a24e46245c93a280e68de4e4afb088708185cf8fdbe851436299cf71097f2618",
+          "md5": "83159fb662d3a6d7955c66f8238c31ff"
         }
       ],
       "xtal_mhz": 26,
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:19:35Z"
     },
     "esp32c3": {
       "revision": "esp32c3",
       "label": "ESP32-C3 (2 MB or larger)",
       "target": "esp32c3",
       "chip": "ESP32-C3",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -115,8 +119,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 21344,
-          "sha256": "45e29051c9d1ce1eba91882d59004ab61c95c93e0b8ba38c9d76a49ec9d418ca",
-          "md5": "9601fbf4c68c24627210ab56a94f7403"
+          "sha256": "4700c5a8778d5f5303db55d70ca9669b971e7c428d2377a7f5473f689ca3271e",
+          "md5": "992af6b2832139de944e1784a1637ed5"
         },
         {
           "name": "1-partition-table.bin",
@@ -128,19 +132,21 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 698320,
-          "sha256": "f35bc4040e17cb4beb990c35ee61b2d335ebb16b578ece9ee3917b883c41c73b",
-          "md5": "5636b15ecd73b83572a8dcf44caf416e"
+          "size": 703664,
+          "sha256": "e40ab3581cc82665e12229362e8649e991e5f3dc8249b17758bae9dc2b69c2e3",
+          "md5": "125b952d1f41cf893df5f9689b8c6201"
         }
       ],
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:20:30Z"
     },
     "esp32c5": {
       "revision": "esp32c5",
       "label": "ESP32-C5 (2 MB or larger)",
       "target": "esp32c5",
       "chip": "ESP32-C5",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -159,8 +165,8 @@
           "name": "0-bootloader.bin",
           "offset": 8192,
           "size": 22336,
-          "sha256": "1edaf76b58e5ffce95988a85f40e9c451d68ceb6cbd370ec2fd679e2e6157451",
-          "md5": "18ccf959749a2914555f81ea986238fe"
+          "sha256": "551181e798421e26ca4540a227200b59a21848d45f8fea63d5ebd88d413f2325",
+          "md5": "17b983faf8b8a8cc7a35808435a77d8e"
         },
         {
           "name": "1-partition-table.bin",
@@ -172,19 +178,21 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 798448,
-          "sha256": "d84cc92b70f879ceb202fc4efdee9d03eeb0201117441f9fa6e074bca9591415",
-          "md5": "8ff9d44f4a4bc9df70a080481343d462"
+          "size": 803392,
+          "sha256": "df4c41c1198907f88f28993bfcc583f939963085ab7257160f6097c4a4528196",
+          "md5": "5b95ccfd3ce7fc4391458b8be9895f2f"
         }
       ],
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:21:16Z"
     },
     "esp32c6": {
       "revision": "esp32c6",
       "label": "ESP32-C6 (2 MB or larger)",
       "target": "esp32c6",
       "chip": "ESP32-C6",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -203,8 +211,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 22240,
-          "sha256": "9dfcfccf01474c8c434e18afd0e827a209d0a0edbd869e36e1a6976785b402db",
-          "md5": "75e1db5d2cbf9c38268fa73ff62fb18c"
+          "sha256": "96bc89a113f33785fc87d2731b205aec897919ffa2487efe4f7b6d0efa12b947",
+          "md5": "a41726d2af132e74f514576f165bc87a"
         },
         {
           "name": "1-partition-table.bin",
@@ -216,19 +224,21 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 792016,
-          "sha256": "f73ef8559c56e266274b949e796ffab5e8a45770955a555f7d2334872d9db893",
-          "md5": "e547354c16fe8744942fc9c483e2e9f0"
+          "size": 796816,
+          "sha256": "52dc5ef24a7b9d3594a080ca9571bbc48baadb54632b9da56e5c1d59c61e2dc2",
+          "md5": "d8094f4fda6ffc71ec0a3dd2c621f67d"
         }
       ],
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:22:47Z"
     },
     "esp32c61": {
       "revision": "esp32c61",
       "label": "ESP32-C61 (2 MB or larger)",
       "target": "esp32c61",
       "chip": "ESP32-C61",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -247,8 +257,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 22336,
-          "sha256": "576773f38defc4f205ea230375f1a6cdb9669627a7f73c83231bf2d45152ced7",
-          "md5": "1663052304a0ea1f01033ccf8dd18306"
+          "sha256": "36bc9bd6f3bac2f4038ffa48d6c302000a4317a8e140fde66ce64a0a34d99333",
+          "md5": "f2b8b6fbb2e77e872d5dd3b2f91e77f4"
         },
         {
           "name": "1-partition-table.bin",
@@ -260,19 +270,21 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 749008,
-          "sha256": "3add02c62776fc13961d1587614e7ba4b35c280c24231355bc435f4fb363e615",
-          "md5": "e45f02d856fe605547b19c50f5676e13"
+          "size": 756128,
+          "sha256": "c7ed941b3c94c4e4d091c48850b5379ae481ad0e45174a13106c2462a0434c8a",
+          "md5": "bd16489a200b17d1b60543bbe07ee9c1"
         }
       ],
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:27:16Z"
     },
     "esp32h2": {
       "revision": "esp32h2",
       "label": "ESP32-H2 (2 MB or larger)",
       "target": "esp32h2",
       "chip": "ESP32-H2",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -291,8 +303,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 21920,
-          "sha256": "aa8ed5f93e84cfbcf61477fd1c1cf6f65c3d3b9eb6669820d6a35ab0eece21ae",
-          "md5": "c9adcb3106add4a19852d9dcb4f9c8e0"
+          "sha256": "c98bcf687bf3e247d8c326b14607d70507d2b19f8e60cead4794a4abef87af6d",
+          "md5": "28b6422c24115e341c2f0ed4fcd6b343"
         },
         {
           "name": "1-partition-table.bin",
@@ -304,19 +316,21 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 225392,
-          "sha256": "764a108526e624b6056f1b0320ed947db9ce4988a782b23e095b693abfdfdff1",
-          "md5": "3b9afded9c5a4023583585651a722e96"
+          "size": 231488,
+          "sha256": "a94ea0e5bec63e5cad70e1a5efbb2f44fde8b086180c481609359b32e11abc47",
+          "md5": "fb67e5f76a68a63c03cd07173dc2973a"
         }
       ],
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:23:32Z"
     },
     "esp32s2": {
       "revision": "esp32s2",
       "label": "ESP32-S2 (4 MB or larger)",
       "target": "esp32s2",
       "chip": "ESP32-S2",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "4MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -335,8 +349,8 @@
           "name": "0-bootloader.bin",
           "offset": 4096,
           "size": 22320,
-          "sha256": "3ab83c80a96205c9266679707815bff7f5e1776bec5345975ef0b8aeec940eeb",
-          "md5": "441fa9505110bbc438dcdc42ea9252b8"
+          "sha256": "8a53998a15dd1bd1e85ae9aa22e33c146bb71e29a9577d635fa5bc7032951374",
+          "md5": "1c127d1428f8995942417242271a1bb4"
         },
         {
           "name": "1-partition-table.bin",
@@ -348,19 +362,21 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 637696,
-          "sha256": "06daa4310aad8865996d2d359783ee2e859c85f8b785de3eda9f95f964052239",
-          "md5": "6448b12075b38eb76a68a42a14ec2036"
+          "size": 644224,
+          "sha256": "a887cb4efd9d497d181a5a341de03eba21463a5b4027271a91627bd767ff3deb",
+          "md5": "6c768d3eac3081533b3e67395ad1565b"
         }
       ],
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:24:12Z"
     },
     "esp32s3": {
       "revision": "esp32s3",
       "label": "ESP32-S3 (2 MB or larger)",
       "target": "esp32s3",
       "chip": "ESP32-S3",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -379,8 +395,8 @@
           "name": "0-bootloader.bin",
           "offset": 0,
           "size": 20896,
-          "sha256": "6e46fff2904fa8dcb5e829f63d509ea1712fa9c0a910b9a8f44506352aec4e23",
-          "md5": "42243816b13d29726e68f41df1338134"
+          "sha256": "4e4529af90cc7c6d729250a59f17cd2e749881bf6c05e10354b3437e63d44a09",
+          "md5": "e519abee280388207b458a08570c9fe0"
         },
         {
           "name": "1-partition-table.bin",
@@ -392,19 +408,21 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 667664,
-          "sha256": "daa222434c3876b7b3434cf155b995267506a08d3fdcfd116f24aad75485cc48",
-          "md5": "e1bf5777d3d8d15cae7b24a6218254e6"
+          "size": 674144,
+          "sha256": "dd523596d556799b9b591052fafad6f046cc9990762ce750169ca3420a0e6bb0",
+          "md5": "bcbac0c1a39322db4e5a7e147a27c179"
         }
       ],
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:22:04Z"
     },
     "esp32s31": {
       "revision": "esp32s31",
       "label": "ESP32-S31 (2 MB or larger)",
       "target": "esp32s31",
       "chip": "ESP32-S31",
-      "version": "7876b65-dirty-throughput",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "2MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -423,8 +441,8 @@
           "name": "0-bootloader.bin",
           "offset": 8192,
           "size": 21232,
-          "sha256": "09309e39280a032d608b7015353babc5646526b12d108a7816d06d1307021dbe",
-          "md5": "5f1fa4c30360861786cabfa0d795653a"
+          "sha256": "8fa0e138d37382d67cec3d1b6f0c2a2f700461a516c96358af90ad2424e496cc",
+          "md5": "5d752ddc35710a7da31e49f4a254d107"
         },
         {
           "name": "1-partition-table.bin",
@@ -436,19 +454,21 @@
         {
           "name": "2-esp_sdr.bin",
           "offset": 65536,
-          "size": 794304,
-          "sha256": "96e938dcf27ec09a24517fb1461a89c5328909e3e42fd1c51f7948a4e6f80523",
-          "md5": "5cf410b01430f40ef8e4e91d8d3a24c6"
+          "size": 800192,
+          "sha256": "ab297fddb935dc0c0a838047b59182e567288ea7936e8b6360a5eecc7b80539f",
+          "md5": "e46f29e8bdad58f9d09473f29ecc7294"
         }
       ],
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06",
+      "git_revision": "10f9b3c4e0b78c91da98c93a1e1317c0581f00d5-dirty",
+      "build_timestamp": "2026-10-06T20:18:35Z"
     },
     "esp32s31-stream": {
       "revision": "esp32s31-stream",
       "label": "ESP32-S31 Function-CoreBoard \u00b7 Ethernet / USB for SoapyESPSDR",
       "target": "esp32s31",
       "chip": "ESP32-S31",
-      "version": "cba358c-dirty-rxcal",
+      "version": "10f9b3c-dirty-version",
       "flash_size": "16MB",
       "flash_size_policy": "minimum",
       "flash_settings": {
@@ -467,8 +487,8 @@
           "name": "0-bootloader.bin",
           "offset": 8192,
           "size": 21088,
-          "sha256": "c24427fc470884dcb61b341caed36fe45230afcce9b71b3a828e71578e7d9f7d",
-          "md5": "265ea0cf6cf42a9bb30026da8d35d9f3"
+          "sha256": "c80fd657f5707c983383d477194dd148cf2bbbe05d7403326c7eb799b898b5d8",
+          "md5": "0c2fe4190733d5d75a810fa2c6689069"
         },
         {
           "name": "1-partition-table.bin",
@@ -481,12 +501,12 @@
           "name": "2-esp_sdr.bin",
           "offset": 65536,
           "size": 1083664,
-          "sha256": "4619ee2341e7c46eb85363fed48593d9bed1bb7cacc7dcf91be8555a8c84b51e",
-          "md5": "afa8e5e060361651e766d315227ae878"
+          "sha256": "ead3ad512cc908af2470aaf9905ff3176dc93a4d7380ebdefc905f3210868a80",
+          "md5": "7ef4d474dba14d07c8da32241936fe6a"
         }
       ],
       "application": "soapysdr",
-      "build_date": "2026-10-05"
+      "build_date": "2026-10-06"
     }
   }
 }
