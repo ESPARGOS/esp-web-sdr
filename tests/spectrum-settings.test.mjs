@@ -18,7 +18,7 @@ function fixture(family){
  const radio={family,rxRates:rates,gainMin:0,gainMax:76,gainStep:1,hasGain:true,hasHardwareAgc:true,bandwidthRange:[13,54,1,0],sampleBits:[8,10],
   frequencyInput:()=>({min:100,max:6000,step:1}),frequencyWarning:()=>'',validFrequency:()=>true,
   canStreamSpectrum:true,spectrumProfiles:r=>profiles.filter(p=>p[0]===r),spectrumContinuous:()=>false,specCapabilities:{profiles}};
- const context=vm.createContext({radio,document:{getElementById:get,querySelectorAll:()=>[]},
+ const context=vm.createContext({navigator:{},radio,document:{getElementById:get,querySelectorAll:()=>[]},
   savedPort:()=>null,spectrumMode:false,connected:true,paused:false,tuneFrequency:2412,analogBandwidth:20,labels(){},clear(){},serialWarning(){}});
  vm.runInContext(app.slice(0,app.indexOf('let connected=')),context);
  vm.runInContext(app.slice(app.indexOf('function state(){'),app.indexOf('function bandwidthChanged()')),context);

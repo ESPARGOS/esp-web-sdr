@@ -162,8 +162,9 @@ function state(){
  $('baudStatus').hidden=!connected||radio.transport!=='UART';
  $('baudStatus').textContent=radio.transport==='UART'?`${radio.baudRate/1000000} MBaud`:'';
  $('connect').disabled=connectionBusy||(!!radio.changingBaud||!!radio.changingGpio);
- $('openOther').disabled=connected||$('connect').disabled;
- $('openRecent').disabled=$('openOther').disabled||!savedPort();
+ $('openOther').disabled=connected||$('connect').disabled||!navigator.serial;
+ $('openUSB').disabled=connected||$('connect').disabled||!navigator.usb;
+ $('openRecent').disabled=connected||$('connect').disabled||!savedPort();
  const warning=connected?radio.frequencyWarning(tuneFrequency):'';$('tuningWarning').textContent=warning;$('tuningWarning').hidden=!warning;$('frequency').classList.toggle('offband',!!warning);$('frequency').title=warning;
  for(const control of document.querySelectorAll('aside input,aside select'))control.disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio);
  const specOk=connected&&radio.canStreamSpectrum;
@@ -298,13 +299,13 @@ $('lowerBaud').onclick=async()=>{
 // The picker includes UART bridges as well as native USB boards.
 const PORT_KEY='espSdrPort';
 function savedPort(){try{return JSON.parse(localStorage.getItem(PORT_KEY)||'null');}catch(e){return null;}}
-function rememberPort(p){try{const i=p.getInfo?.()||{};if(i.usbVendorId)localStorage.setItem(PORT_KEY,JSON.stringify({vid:i.usbVendorId,pid:i.usbProductId}));}catch(e){}}
+function rememberPort(p){try{const i=p.getInfo?.()||{};if(i.usbVendorId)localStorage.setItem(PORT_KEY,JSON.stringify({vid:i.usbVendorId,pid:i.usbProductId,kind:SerialConnection.kind(p)}));}catch(e){}}
 async function choosePort(ev){
- if(!navigator.serial)throw Error('WebSerial support is required in this browser.');
- if(!ev?.choosePort){const saved=savedPort(),ports=await navigator.serial.getPorts();
+ if(!SerialConnection.supported())throw Error('WebSerial or WebUSB support is required in this browser.');
+ if(!ev?.choosePort){const saved=savedPort(),ports=await SerialConnection.getPorts(saved?.kind);
   const matches=saved?ports.filter(p=>{const i=p.getInfo?.()||{};return i.usbVendorId===saved.vid&&i.usbProductId===saved.pid;}):[];
   if(matches.length===1)return matches[0];if(ev?.auto)return null;}
- return navigator.serial.requestPort();
+ return SerialConnection.requestPort(ev?.kind);
 }
 $('connect').title='Connect to the remembered port';
 function closeConnectMenu(focus=false){$('connectMenu').hidden=true;$('choosePort').setAttribute('aria-expanded','false');if(focus)$('choosePort').focus();}
@@ -312,7 +313,8 @@ function openConnectMenu(){state();$('connectMenu').hidden=false;$('choosePort')
 $('choosePort').onclick=()=>{$('connectMenu').hidden?openConnectMenu():closeConnectMenu(true);};
 $('choosePort').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();openConnectMenu();}};
 $('openRecent').onclick=()=>{closeConnectMenu(true);return $('connect').onclick();};
-$('openOther').onclick=()=>{closeConnectMenu(true);return $('connect').onclick({choosePort:true});};
+$('openOther').onclick=()=>{closeConnectMenu(true);return $('connect').onclick({choosePort:true,kind:'webserial'});};
+$('openUSB').onclick=()=>{closeConnectMenu(true);return $('connect').onclick({choosePort:true,kind:'webusb'});};
 $('openFlasher').onclick=()=>closeConnectMenu(true);
 $('connectMenu').onkeydown=e=>{
  if(e.key==='Escape'){e.preventDefault();closeConnectMenu(true);}
@@ -462,5 +464,5 @@ $('autoscale').onchange=()=>{autoT=0;autoPk=null;};
 
 // Start without a click: connect to the remembered port as soon as the page
 // loads and whenever a device is plugged in (only ports this site was granted).
-if(navigator.serial){navigator.serial.addEventListener?.('connect',()=>setTimeout(()=>$('connect').onclick({auto:true}),500));
+if(SerialConnection.supported()){SerialConnection.onConnect(()=>setTimeout(()=>$('connect').onclick({auto:true}),500));
  setTimeout(()=>$('connect').onclick({auto:true}),300);}

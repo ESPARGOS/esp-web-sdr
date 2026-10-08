@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
+const connectionSource=await readFile(new URL('../serial-transport.js',import.meta.url),'utf8');
 const source=await readFile(new URL('../radio.js',import.meta.url),'utf8');
 function makeRadio(timer=(f)=>f()){
  const context=vm.createContext({performance,setTimeout:timer});
- vm.runInContext(source,context);return vm.runInContext('radio',context);
+ vm.runInContext(connectionSource,context);vm.runInContext(source,context);return vm.runInContext('radio',context);
 }
 test('UART bridges exit reset and ROM download mode before synchronization',async()=>{
  for(const vendor of [0x10c4,0x1a86,0x0403,0x067b]){
@@ -30,7 +31,7 @@ test('connect resets a UART bridge before sending the synchronization marker',as
   readable:{getReader:()=>({})},writable:{getWriter:()=>({})}};
  const context=vm.createContext({performance,setTimeout:f=>f(),isSecureContext:true,
   navigator:{serial:{requestPort:async()=>port}}});
- vm.runInContext(source,context);const r=vm.runInContext('radio',context);
+ vm.runInContext(connectionSource,context);vm.runInContext(source,context);const r=vm.runInContext('radio',context);
  r.close=async()=>{};r.pump=async()=>{};
  r.synchronize=async()=>{events.push('sync');assert.deepEqual(events,['open','reset','run','sync']);};
  r.command=async()=>{};

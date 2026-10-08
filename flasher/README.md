@@ -4,6 +4,15 @@ The installer uses the bundled [Espressif esptool-js](https://github.com/espress
 0.7.0. Release provenance and checksums are recorded in
 `vendor/esptool-js-provenance.json`; license texts are retained in `vendor/`.
 
+The split Connect button defaults to WebSerial on desktop and native Espressif
+CDC via WebUSB on mobile; its dropdown offers the other transport. If the
+preferred API is unavailable, the available API becomes the default. Both use the shared SerialPort contract in `../serial-transport.js`;
+`Transport` receives either a browser SerialPort or a NativeUSBPort without
+changes to esptool's SLIP protocol, bootloader reset, flashing or verification.
+The bundled `WebUSBSerialPort` is a CH340 implementation and is intentionally
+not used. See [USB transport notes](../docs/usb-transport.md) for lifecycle,
+platform limitations and hardware results.
+
 The application corrects C5 `SPI_REG_BASE` to `0x60003000` because version
 0.7.0 inherits C6's `0x60002000`. Recheck this correction when upgrading the
 loader, and update `vendor/esptool-js-0.7.0-chips.json` to match its supported

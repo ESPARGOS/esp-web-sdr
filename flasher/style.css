@@ -37,3 +37,13 @@ dt{color:#adb8bd}
 dd{margin:0;overflow-wrap:anywhere}
 @media(max-width:700px){header{grid-template-columns:1fr}header h1{justify-self:stretch}}
 @media(max-width:500px){body{padding:12px}header{gap:8px}section{padding:12px}dl{grid-template-columns:65px minmax(0,1fr)}button,.button{width:100%;min-height:44px}select{min-height:44px}}
+
+.connect-buttons{display:inline-flex;position:relative;align-items:stretch}
+.connect-buttons #connect{border-radius:7px 0 0 7px}
+#chooseConnection{width:40px;flex:0 0 40px;padding:8px;border-left:1px solid #11191e;border-radius:0 7px 7px 0}
+#connectMenu{position:absolute;top:calc(100% + 4px);left:0;min-width:100%;z-index:10;padding:4px;background:#11191e;border:1px solid #617079;border-radius:7px;box-shadow:0 4px 12px #0006}
+#connectMenu[hidden]{display:none}
+#connectAlternative{width:100%;white-space:nowrap;text-align:left;background:transparent;color:#dee2e6;font-weight:400}
+#connectAlternative:hover:not(:disabled),#connectAlternative:focus-visible{background:#293135}
+.connect-buttons button:focus-visible{outline:2px solid #dee2e6;outline-offset:2px;z-index:1}
+@media(max-width:500px){.connect-buttons{width:100%}.connect-buttons #connect{flex:1;min-width:0}}
