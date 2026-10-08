@@ -1,5 +1,5 @@
 {
   "profile": "esp32s31-stream",
-  "version": "10f9b3c-dirty-version",
+  "version": "565fe0a0655be0a3abf5a8bf942b1245123e7bb7",
   "idf_commit": "c712a0dde385d659a1470a136251980d31a70bc1"
 }
