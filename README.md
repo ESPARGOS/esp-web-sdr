@@ -18,9 +18,26 @@ While we put a lot of manual effort into [pyespargos](https://github.com/ESPARGO
 
 ## Get started
 
-1. Use a browser with Web Serial support and connect your board over USB.
+1. Use a browser with WebSerial or WebUSB support and connect your board over USB.
 2. Install the matching firmware with the [firmware installer](https://espargos.net/espsdr/app/flash.html).
 3. Open the [viewer](https://espargos.net/espsdr/app/), connect to the board, and select a frequency.
+
+The installer and viewer default to **WebSerial on desktop** and **WebUSB on
+mobile**, falling back to the available API when necessary. The installer's
+Connect dropdown offers the other transport; the viewer's connection menu
+lets you choose either one. Remembered viewer connections retain their
+previously selected transport.
+
+For WebUSB, use the chip's native USB connector: this backend supports
+Espressif CDC interfaces, including USB Serial/JTAG. Use WebSerial for
+external UART bridges.
+Both APIs require HTTPS or localhost.
+
+WebUSB still needs permission to claim the device's CDC interfaces. A desktop
+OS driver may already own them; use WebSerial on such hosts. Browser/OS USB
+restrictions cannot be bypassed by this backend. After a firmware change that
+changes USB identity, select the device again (BOOT mode may be needed).
+See [transport architecture and hardware checks](docs/usb-transport.md).
 
 The installer also includes the **ESP32-S31 Ethernet / USB profile for
 [SoapyESPSDR](https://github.com/ESPARGOS/SoapyESPSDR)**. Select that profile to

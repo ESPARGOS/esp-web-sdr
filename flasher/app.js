@@ -6,10 +6,16 @@ const manifestUrl=new URL('../firmware/manifest.json',import.meta.url);
 const UART_BAUDRATE=2000000;
 const UART_SPEED_WARNING='UART too slow for ESP-WebSDR, choose a different dev kit';
 class UartSpeedError extends Error {constructor(){super(UART_SPEED_WARNING);}}
+const defaultConnection=SerialConnection.defaultKind();
+const alternativeConnection=defaultConnection==='webserial'?'webusb':'webserial';
+const connectionLabel=kind=>kind==='webusb'?'WebUSB':'WebSerial';
 let firmware=null;
 let loader=null,transport=null,busy=false,detectedFlashSize=null,uart=false,lastPort=null;
 
 function selectedFirmware(){const variant=firmware.variants[$('revision').value];if(!variant)throw Error('Choose your chip profile first.');if(variant.browser_supported===false)throw Error('This chip is not supported by the bundled browser flasher. Use ESP-IDF/esptool with the firmware artifact.');return variant;}
+class SDRTransport extends Transport {
+ getInfo(){return super.getInfo().replace('WebSerial',SerialConnection.kind(this.device)==='webusb'?'WebUSB':'WebSerial');}
+}
 // esptool-js 0.7.0 inherits C6 SPI_REG_BASE (0x60002000) for C5.
 // Espressif esptool targets/esp32c5.py specifies 0x60003000 for C5.
 class SDRLoader extends ESPLoader {
@@ -26,7 +32,16 @@ class SDRLoader extends ESPLoader {
 }
 const log=text=>{$('log').textContent+=text;$('log').scrollTop=$('log').scrollHeight;};
 function status(text,error=false){$('status').textContent=text;$('status').dataset.error=String(error);}
-function buttons(){const variant=firmware?.variants[$('revision').value];$('s3-bridge-hint').hidden=variant?.target!=='esp32s3';const soapy=variant?.application==='soapysdr';$('open-application').href=soapy?'https://github.com/ESPARGOS/SoapyESPSDR':'index.html';$('open-application').textContent=soapy?'Set up SoapyESPSDR ↗':'Open ESP-WebSDR ↗';const supported=!!navigator.serial&&isSecureContext;$('connect').disabled=!firmware||busy||!!transport||!supported;$('revision').disabled=!firmware||busy||(!loader&&!lastPort);$('install').disabled=busy||(!loader&&!lastPort)||!$('revision').value;$('disconnect').disabled=busy||!transport;}
+function buttons(){const variant=firmware?.variants[$('revision').value];$('s3-bridge-hint').hidden=variant?.target!=='esp32s3';const soapy=variant?.application==='soapysdr';$('open-application').href=soapy?'https://github.com/ESPARGOS/SoapyESPSDR':'index.html';$('open-application').textContent=soapy?'Set up SoapyESPSDR ↗':'Open ESP-WebSDR ↗';const supported=SerialConnection.supported()&&isSecureContext;$('connect').disabled=!firmware||busy||!!transport||!supported;$('revision').disabled=!firmware||busy||(!loader&&!lastPort);$('install').disabled=busy||(!loader&&!lastPort)||!$('revision').value;$('disconnect').disabled=busy||!transport;$('chooseConnection').disabled=$('connect').disabled;$('connectAlternative').disabled=$('connect').disabled||!navigator[alternativeConnection==='webusb'?'usb':'serial'];if(busy||transport)closeConnectMenu();}
+$('connect').textContent=`Connect via ${connectionLabel(defaultConnection)}`;
+$('connectAlternative').textContent=`Choose ${connectionLabel(alternativeConnection)} Device…`;
+function closeConnectMenu(focus=false){$('connectMenu').hidden=true;$('chooseConnection').setAttribute('aria-expanded','false');if(focus)$('chooseConnection').focus();}
+function openConnectMenu(){if($('chooseConnection').disabled)return;$('connectMenu').hidden=false;$('chooseConnection').setAttribute('aria-expanded','true');if(!$('connectAlternative').disabled)$('connectAlternative').focus();}
+$('chooseConnection').onclick=()=>{$('connectMenu').hidden?openConnectMenu():closeConnectMenu(true);};
+$('chooseConnection').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();openConnectMenu();}};
+$('connectMenu').onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();closeConnectMenu(true);}};
+document.addEventListener('click',e=>{if(!e.target.closest('.connect-buttons'))closeConnectMenu();});
+document.addEventListener('focusin',e=>{if(!e.target.closest('.connect-buttons'))closeConnectMenu();});
 function beforeUnload(e){if(busy){e.preventDefault();e.returnValue='';}}
 window.addEventListener('beforeunload',beforeUnload);
 async function disconnect(){loader=null;detectedFlashSize=null;if(transport){const t=transport;transport=null;await t.disconnect();}$('device').textContent='Not connected';updateProfiles();}
@@ -44,12 +59,12 @@ function updateProfiles(selectDefault=false){
  buttons();
 }
 $('revision').onchange=()=>{updateProfiles();status((firmware.variants[$('revision').value]?.label||'No firmware')+' selected. '+applicationGuidance(firmware.variants[$('revision').value]));};
-async function connectDevice(previousPort=null){
+async function connectDevice(previousPort=null,kind=defaultConnection){
  busy=true;buttons();$('log').textContent='';status('Select your ESP32 device.');
  try{
-  const port=previousPort||await navigator.serial.requestPort();
+  const port=previousPort?await SerialConnection.reconnect(previousPort):await SerialConnection.requestPort(kind);
   uart=port.getInfo().usbVendorId!==0x303a;
-  transport=new Transport(port,false);
+  transport=new SDRTransport(port,false);
   const candidate=new SDRLoader({transport,baudrate:115200,terminal:{clean(){},write:log,writeLine:s=>log(s+'\n')}});
   status('Connecting to the bootloader…');await candidate.main();
   const size=await candidate.detectFlashSize();detectedFlashSize=size;
@@ -58,10 +73,12 @@ async function connectDevice(previousPort=null){
   lastPort=port;
   updateProfiles(!previousPort);
   status('Connected. Review the suggested firmware or choose another profile, then select Install ESP-SDR firmware.');
- }catch(e){status(e instanceof UartSpeedError?e.message:`${e.message||e} Close other serial clients; if needed, reconnect while holding BOOT and retry.`,true);try{await disconnect();}catch(_){} }
+ }catch(e){status(e instanceof UartSpeedError||e.code==='USB_INTERFACE_UNAVAILABLE'?e.message:`${e.message||e} Close other serial clients; if needed, reconnect while holding BOOT and retry.`,true);try{await disconnect();}catch(_){} }
  finally{busy=false;buttons();}
 }
-$('connect').onclick=async()=>{if(busy)return;lastPort=null;await connectDevice();};
+async function connectWith(kind){if(busy||transport)return;closeConnectMenu();lastPort=null;await connectDevice(null,kind);}
+$('connect').onclick=()=>connectWith(defaultConnection);
+$('connectAlternative').onclick=()=>{if(!$('connectAlternative').disabled)return connectWith(alternativeConnection);};
 $('install').onclick=async()=>{
  if(busy)return;
  if(!loader&&lastPort)await connectDevice(lastPort);
@@ -119,7 +136,7 @@ async function initialize(){
   const requestedBoard=new URLSearchParams(location.search).get('board');
   if(requestedBoard&&firmware.variants[requestedBoard]?.browser_supported){$('revision').value=requestedBoard;$('version').textContent=firmwareDate(firmware.variants[requestedBoard]);}
   updateProfiles();
-  status(navigator.serial&&isSecureContext?'Connect your device first. Matching firmware profiles will be suggested automatically.':'This browser needs WebSerial support. Serve this page over HTTPS or localhost.',!(navigator.serial&&isSecureContext));
+  status(SerialConnection.supported()&&isSecureContext?'Connect your device first. Matching firmware profiles will be suggested automatically.':'This browser needs WebSerial or WebUSB support. Serve this page over HTTPS or localhost.',!(SerialConnection.supported()&&isSecureContext));
  }catch(e){firmware=null;status(`Cannot load firmware: ${e.message} Check that the firmware folder is deployed alongside this website.`,true);}
  buttons();
 }

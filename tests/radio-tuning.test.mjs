@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
+const connectionSource=await readFile(new URL('../serial-transport.js',import.meta.url),'utf8');
 const source=await readFile(new URL('../radio.js',import.meta.url),'utf8');
 const families=['ESP32','C3','C5','C6','C61','S2','S3','S31'];
 function fixture(){
@@ -10,7 +11,7 @@ function fixture(){
   readable:{getReader:()=>({cancel:async()=>{},releaseLock:()=>{}})},
   writable:{getWriter:()=>({releaseLock:()=>{}})}};
  const c=vm.createContext({performance,isSecureContext:true,navigator:{serial:{requestPort:async()=>port}}});
- vm.runInContext(source,c);const r=vm.runInContext('radio',c);
+ vm.runInContext(connectionSource,c);vm.runInContext(source,c);const r=vm.runInContext('radio',c);
  r.pump=async()=>{};r.synchronize=async()=>{};
  r.command=async s=>commands.push(s);r.line=async()=>responses.length?responses.shift():'OK';
  function handshake(family,range='100 6000 1'){
