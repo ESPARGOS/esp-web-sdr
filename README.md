@@ -57,6 +57,34 @@ hold BOOT, tap RESET, then release BOOT and reconnect in the installer.
 
 See the [ESP-SDR guide](https://espargos.net/espsdr/) for supported chips and setup.
 
+## Chrome on Android
+
+ESP-WebSDR also works directly in **Chrome on Android**: WebUSB connects the
+browser to the ESP32, so no separate Android app is needed. The live spectrum,
+waterfall, tuning, gain and bandwidth controls work in the mobile browser.
+
+1. Connect a supported ESP32 board's **native USB connector** to an Android
+   phone or tablet with USB host / OTG support, using a USB data cable and an
+   OTG adapter if needed. External USB-to-UART bridges such as CP210x, CH340
+   and FT232 are not supported by this WebUSB backend.
+2. If the board does not already have ESP-SDR firmware, open the
+   [firmware installer](https://espargos.net/espsdr/app/flash.html) in Chrome.
+   Tap **Connect via WebUSB**, select the board and grant USB access, then
+   install the matching ESP-SDR firmware. If bootloader entry fails, hold
+   BOOT, tap RESET, release BOOT and connect again.
+3. Open the [viewer](https://espargos.net/espsdr/app/) in Chrome and tap
+   **Connect ESP-SDR**. Select the board and grant access when prompted;
+   WebUSB is selected automatically on mobile. You can also explicitly select
+   **Choose WebUSB Device…** from the connection menu.
+4. Once connected, reception starts automatically. Select a frequency and
+   adjust the controls to explore the spectrum and waterfall.
+
+If flashing changes the board's USB identity, select it again in the viewer.
+Use the HTTPS links above: an HTTP page served from another computer on your
+local network does not provide the secure context required by WebUSB.
+
+<img src="docs/android-chrome-screenshot.jpeg" width="320" alt="ESP-WebSDR in Chrome on Android, showing a live 2.4 GHz power spectrum and waterfall">
+
 ## Contributors
 
 <table>
