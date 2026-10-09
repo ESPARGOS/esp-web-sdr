@@ -57,6 +57,66 @@ hold BOOT, tap RESET, then release BOOT and reconnect in the installer.
 
 See the [ESP-SDR guide](https://espargos.net/espsdr/) for supported chips and setup.
 
+## Desktop setup
+
+Use Chrome, Edge, or [Firefox 151 or later](https://hacks.mozilla.org/2026/05/web-serial-support-in-firefox/)
+on desktop. The installer and viewer use **WebSerial** by default, supporting
+both native USB serial ports and external USB-to-UART bridges.
+
+1. Connect your board with a USB data cable and close any serial monitor using
+   its port.
+2. Open the [firmware installer](https://espargos.net/espsdr/app/flash.html),
+   click **Connect via WebSerial**, select the board's port, and install the
+   matching ESP-SDR firmware if needed.
+3. Open the [viewer](https://espargos.net/espsdr/app/), click **Connect ESP-SDR**,
+   and select the port. Reception starts automatically. To explicitly select
+   the desktop transport, use **Choose WebSerial Device…** in the connection menu.
+
+On Windows or macOS, if an external USB-to-UART bridge does not appear as a
+serial port, install its manufacturer's driver. Espressif's
+[serial connection guide](https://docs.espressif.com/projects/esp-idf/en/release-v5.5/esp32h2/get-started/establish-serial-connection.html)
+links to common bridge drivers and explains how to identify the port.
+
+### Linux serial permissions
+
+If the browser lists the port but cannot open it, check that your user has
+read/write access. Native USB usually appears as `/dev/ttyACM0`; external
+bridges often appear as `/dev/ttyUSB0`. Substitute your board's actual port:
+
+```sh
+ls -l /dev/ttyACM0
+```
+
+On Debian/Ubuntu, add your user to the serial-port group, then **log out and
+back in** before reopening the browser:
+
+```sh
+sudo usermod -aG dialout "$USER"
+```
+
+Arch Linux normally uses `uucp` instead of `dialout`. Use the group shown for
+your device; see the Linux permissions section in the Espressif guide above.
+
+Alternatively, on a desktop using systemd-logind, a udev rule can grant the
+active local user access to native Espressif serial ports. Create
+`/etc/udev/rules.d/70-esp-web-sdr.rules` with this line:
+
+```udev
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", TAG+="uaccess"
+```
+
+Reload the rules, then unplug and reconnect the board:
+
+```sh
+sudo udevadm control --reload-rules
+```
+
+This rule matches native Espressif USB devices, not CP210x, CH340 or FT232
+bridges. For those, use the serial-port group method above. The rule grants
+serial-port access for WebSerial; it does not release a CDC interface owned
+by the Linux kernel for WebUSB. If WebUSB reports **Unable to claim interface**,
+choose WebSerial. See [USB transport troubleshooting](docs/usb-transport.md#chromium-on-desktop-linux-unable-to-claim-interface).
+
 ## Chrome on Android
 
 ESP-WebSDR also works directly in **Chrome on Android**: WebUSB connects the
@@ -127,17 +187,3 @@ the widest filter setting. Lower rates are hardware subsampling without
 automatic anti-alias filtering. Continuous capture is not advertised. On a TX/RX-only adapter,
 enter download mode with BOOT/RESET before installation and reset afterward;
 the adapter cannot control the board's reset pins.
-
-## GPIO controls
-
-Firmware advertising the `GPIO` capability exposes a collapsed GPIO section at
-the bottom of the left panel. Each available pin has a compact Z / 0 / 1 button
-group: high impedance (no internal pulls), drive low, or drive high. Pins start
-in Z when firmware boots. Connecting reads existing settings without changing
-them; settings last until reboot and are not stored in the browser.
-
-The pin list comes from firmware and excludes memory and active transport pins.
-Numbers are chip GPIO numbers; board wiring and exposed pins vary. A change
-finishes the current capture or stops/drains spectrum streaming, applies the
-setting, then resumes if reception was running. The selected button changes
-only after firmware acknowledges the setting. Older firmware hides the section.
