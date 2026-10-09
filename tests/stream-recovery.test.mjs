@@ -34,7 +34,7 @@ for(const failure of ['validation','device rejection','disconnect'])test(`${fail
  let frames=0,closed=0;
  radio.close=async()=>{closed++;};
  const errors=[];
- const ctx=vm.createContext({navigator:{},radio,$,document,gainMode:'HARDWARE',savedPort:()=>null,spectrumMode:false,connected:true,connectionBusy:false,paused:false,running:false,previous:0,
+ const ctx=vm.createContext({navigator:{},radio,$,document,gainMode:'HARDWARE',analogBandwidth:20,savedPort:()=>null,spectrumMode:false,connected:true,connectionBusy:false,paused:false,running:false,previous:0,
   clear:()=>{},tuneFrequency:failure==='validation'?6001:2612,setTimeout,
   config:()=>({frequency:ctx.tuneFrequency}),selectRxFrame:()=>true,
   render:()=>{frames++;ctx.paused=true;},error:(e,communication)=>errors.push({e,communication}),

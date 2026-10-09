@@ -86,3 +86,9 @@ aside input:disabled,aside select:disabled{opacity:.5;cursor:not-allowed}#error 
 #firmwareWarning{background:#39351f;border:1px solid #81723a;border-radius:7px;padding:10px 12px;margin-bottom:14px;color:#eedda2;font-size:14px}
 #firmwareWarning[hidden]{display:none}
 #firmwareWarning a{white-space:nowrap;color:#eedda2;text-decoration:underline}
+
+/* Dismissible banners keep room for the close button when messages wrap. */
+#error,#serialWarning,#firmwareWarning,#tuningWarning{position:relative;padding-right:54px;min-height:50px}
+#error .banner-close,#serialWarning .banner-close,#firmwareWarning .banner-close,#tuningWarning .banner-close{position:absolute;top:6px;right:6px;display:flex;align-items:center;justify-content:center;width:36px;height:36px;margin:0;padding:0;background:transparent;color:inherit;border-color:transparent;font-size:24px;line-height:1}
+#error .banner-close:hover,#serialWarning .banner-close:hover,#firmwareWarning .banner-close:hover,#tuningWarning .banner-close:hover{border-color:currentColor}
+.banner-close:focus-visible{outline:2px solid currentColor;outline-offset:1px}

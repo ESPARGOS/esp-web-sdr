@@ -9,7 +9,7 @@ function fixture(){
  const radio=vm.runInContext('radio',ctx),crc=vm.runInContext('crc32',ctx);
  const elements=new Map(),$=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);};
  Object.assign(ctx,{$,connected:true});
- vm.runInContext(app.slice(app.indexOf('function serialWarning(){'),app.indexOf('function state(){')),ctx);
+ vm.runInContext(app.slice(app.indexOf('let serialWarningDismissedAt='),app.indexOf('function state(){')),ctx);
  radio.onCaptureError=()=>vm.runInContext('serialWarning()',ctx);
  radio.hasSpec=true;radio.hasSpecN=true;radio.rxRates=[80000000];radio.transport='UART';radio.supportsBaudChange=true;
  radio.applySpectrumCapabilities('SPECINFO '+JSON.stringify({continuous:false,transports:['UART'],profiles:[[80000000,0,256,1,1]]}));
@@ -43,4 +43,57 @@ test('raw capture warning and USB / 1 MBaud guidance remain available',()=>{
  radio.baudRate=1000000;radio.onCaptureError();assert.equal($('lowerBaud').hidden,true);assert.match($('serialWarningText').textContent,/1 MBaud/);
  radio.transport='USB';radio.onCaptureError();assert.equal($('lowerBaud').hidden,true);assert.match($('serialWarningText').textContent,/USB connection/);
  ctx.connected=false;radio.onCaptureError();assert.equal($('serialWarning').hidden,true);
+});
+
+test('dismissal survives healthy frames and stream restarts, then warns on three new errors',async()=>{
+ const {radio,$,frame,bad,end,stream}=fixture();
+ await stream([bad,bad,bad,end]);
+ assert.equal($('serialWarning').hidden,false);
+ $('dismissSerialWarning').onclick();
+ assert.equal($('serialWarning').hidden,true);
+ assert.equal(radio.spectrumCrcErrors,3);
+ await stream([frame,frame,end]);radio.onCaptureError();
+ assert.equal($('serialWarning').hidden,true);
+ await stream([bad,bad,end]);
+ assert.equal($('serialWarning').hidden,true);
+ await stream([bad,end]);
+ assert.equal($('serialWarning').hidden,false);
+ assert.equal(radio.spectrumCrcErrors,6);
+ $('dismissSerialWarning').onclick();radio.onCaptureError();
+ assert.equal($('serialWarning').hidden,true);
+});
+
+test('dismissal preserves both error counters and counts new raw and spectrum errors together',()=>{
+ const {radio,$}=fixture();
+ radio.droppedCaptures=2;radio.spectrumCrcErrors=3;radio.onCaptureError();
+ $('dismissSerialWarning').onclick();
+ assert.equal(radio.droppedCaptures,2);assert.equal(radio.spectrumCrcErrors,3);
+ radio.droppedCaptures++;radio.spectrumCrcErrors++;radio.onCaptureError();
+ assert.equal($('serialWarning').hidden,true);
+ radio.droppedCaptures++;radio.onCaptureError();
+ assert.equal($('serialWarning').hidden,false);
+});
+
+for(const reset of ['disconnect','device identity'])test(`dismissal resets after ${reset}`,()=>{
+ const {ctx,radio,$}=fixture();
+ radio.droppedCaptures=20;radio.onCaptureError();$('dismissSerialWarning').onclick();
+ if(reset==='disconnect'){
+  ctx.connected=false;radio.onCaptureError();assert.equal($('serialWarning').hidden,true);
+  radio.droppedCaptures=0;ctx.connected=true;
+ }else radio.applyIdentity('ESP32SDR 6 burst 16380');
+ radio.onCaptureError();assert.equal($('serialWarning').hidden,true);
+ radio.droppedCaptures=3;radio.onCaptureError();
+ assert.equal($('serialWarning').hidden,false);
+});
+
+test('tuning-warning dismissal lasts for the selected frequency and resets on reconnect',()=>{
+ const elements=new Map(),$=id=>{if(!elements.has(id))elements.set(id,{classList:{toggle(){}}});return elements.get(id);};
+ const c=vm.createContext({$,connected:true,tuneFrequency:2600,radio:{frequencyWarning:frequency=>frequency>2483?'Outside ISM band':''}});
+ vm.runInContext(app.slice(app.indexOf('let dismissedTuningFrequency='),app.indexOf('let dismissedFirmwareVersion=')),c);
+ c.tuningWarning();assert.equal($('tuningWarning').hidden,false);
+ $('dismissTuningWarning').onclick();c.tuningWarning();assert.equal($('tuningWarning').hidden,true);
+ c.tuneFrequency=2610;c.tuningWarning();assert.equal($('tuningWarning').hidden,false);
+ $('dismissTuningWarning').onclick();c.connected=false;c.tuningWarning();c.connected=true;c.tuningWarning();
+ assert.equal($('tuningWarning').hidden,false);
+ c.tuneFrequency=2442;c.tuningWarning();assert.equal($('tuningWarning').hidden,true);
 });

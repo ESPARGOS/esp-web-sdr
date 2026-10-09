@@ -4,6 +4,15 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
 const families=['ESP32','C2','H2','C3','C5','C6','C61','S2','S3','S31'];
+for(const [label,expected] of [['2.442 GHz',2442],['5.500 GHz',5500]])test(`${label} preset sets the matching receiver frequency`,async()=>{
+ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+ const [,frequency]=Array.from(html.matchAll(/<button data-freq="(\d+)">([^<]+)<\/button>/g)).find(match=>match[2]===label);
+ const button={dataset:{freq:frequency}},input={};let updated=0;
+ const c=vm.createContext({tuneFrequency:2412,$:()=>input,labels:()=>{updated++;},document:{querySelectorAll:()=>[button]}});
+ vm.runInContext(app.split('\n').find(line=>line.startsWith("for(const b of document.querySelectorAll('[data-freq]'))b.onclick=")),c);
+ button.onclick();assert.equal(c.tuneFrequency,expected);assert.equal(input.value,String(expected));assert.equal(updated,1);
+});
+
 function fixture(family){
  const elements=new Map();
  const values={gain:'40',frequency:'2412',rate:'80000000',bits:'8',fft:'2048',bandwidth:'20',specDetector:'mean',dcMode:'raw',specRow:'10'};
@@ -25,21 +34,22 @@ function fixture(family){
  vm.runInContext(app.slice(app.indexOf('function loOffset('),app.indexOf("$('dcMode').onchange=")),context);
  vm.runInContext(app.split('\n').find(l=>l.startsWith('function config()')),context);
  vm.runInContext(app.slice(app.indexOf('function specSizes('),app.indexOf('async function specLoop()')),context);
- for(const start of ["$('iqMode').onclick=","$('specMode').onclick=","$('gainAgc').onclick=","$('gainManual').onclick=","for(const id of ['rate','bits','fft'])"])
+ vm.runInContext(app.split('\n').find(line=>line.startsWith('function bandwidthChanged()')),context);
+ for(const start of ["$('iqMode').onclick=","$('specMode').onclick=","$('gainAgc').onclick=","$('gainManual').onclick=","$('bandwidthOpen').onclick=","$('bandwidthFilter').onclick=","$('bandwidth').onchange=","for(const id of ['rate','bits','fft'])"])
   vm.runInContext(app.split('\n').find(l=>l.startsWith(start)),context);
  vm.runInContext('applyRadioProfile()',context);
  return {context,get,radio,config:()=>vm.runInContext('specConfig()',context)};
 }
 for(const family of families)test(`${family}: spectrum toggles and rate changes preserve receiver settings`,()=>{
  const f=fixture(family),{context:c,get,radio}=f;
- assert.equal(c.analogBandwidth,20);assert.equal(get('bandwidth').value,20);assert.equal(get('bandwidthOpen').checked,false);
+ assert.equal(c.analogBandwidth,20);assert.equal(get('bandwidth').value,20);assert.equal(get('bandwidthOpen')['aria-pressed'],'false');
  c.tuneFrequency=2442;
  for(const gainMode of ['HARDWARE','MANUAL'])for(const bandwidth of [17,0]){
   get(gainMode==='HARDWARE'?'gainAgc':'gainManual').onclick();get('gain').value='37';
   assert.equal(get('gainAgc')['aria-pressed'],String(gainMode==='HARDWARE'));
   assert.equal(get('gainManual')['aria-pressed'],String(gainMode==='MANUAL'));
   assert.equal(get('gain').disabled,gainMode!=='MANUAL');
-  c.analogBandwidth=bandwidth;get('bandwidth').value='17';get('bandwidthOpen').checked=bandwidth===0;
+  c.analogBandwidth=bandwidth;get('bandwidth').value='17';
   for(const enabled of [true,false]){
    get(enabled?'specMode':'iqMode').onclick();
    assert.equal(get('iqControls').hidden,enabled);assert.equal(get('specOptions').hidden,!enabled);
@@ -48,7 +58,7 @@ for(const family of families)test(`${family}: spectrum toggles and rate changes 
    for(const rate of radio.rxRates){
     get('rate').value=String(rate);get('rate').onchange();
     const config=f.config();
-    assert.equal(c.analogBandwidth,bandwidth);assert.equal(get('bandwidthOpen').checked,bandwidth===0);assert.equal(get('bandwidth').value,'17');
+    assert.equal(c.analogBandwidth,bandwidth);assert.equal(get('bandwidthOpen')['aria-pressed'],String(bandwidth===0));assert.equal(get('bandwidth').value,'17');
     assert.equal(config.bandwidth,bandwidth);assert.equal(config.frequency,2442);assert.equal(config.rate,rate);
     assert.equal(config.gainMode,gainMode);assert.equal(config.gain,37);assert.equal(get('bits').value,'8');
    }
@@ -66,4 +76,43 @@ test('gain buttons respect AGC support, disconnection and baud changes',()=>{
   update();vm.runInContext('state()',context);
   assert.equal(get('gainAgc').disabled,true);assert.equal(get('gainManual').disabled,true);assert.equal(get('gain').disabled,true);
  }
+});
+
+test('Open bypasses the analog filter and Filter restores the last selected bandwidth',()=>{
+ const {context,get,config}=fixture('C61');
+ get('bandwidth').value='17';get('bandwidth').onchange();
+ assert.equal(config().bandwidth,17);
+ get('bandwidthOpen').onclick();
+ assert.equal(config().bandwidth,0);assert.equal(get('bandwidth').disabled,true);
+ assert.equal(get('bandwidthOpen')['aria-pressed'],'true');assert.equal(get('bandwidthFilter')['aria-pressed'],'false');
+ get('bandwidthOpen').onclick();assert.equal(get('bandwidth').value,17);
+ get('bandwidthFilter').onclick();
+ assert.equal(config().bandwidth,17);assert.equal(get('bandwidth').disabled,false);
+ assert.equal(get('bandwidthOpen')['aria-pressed'],'false');assert.equal(get('bandwidthFilter')['aria-pressed'],'true');
+ // Invalid edits do not change the active filter or replace the last valid setting.
+ let reported=0;get('bandwidth').checkValidity=()=>false;get('bandwidth').reportValidity=()=>{reported++;};
+ get('bandwidth').value='99';get('bandwidth').onchange();
+ assert.equal(config().bandwidth,17);assert.equal(reported,1);
+ get('bandwidthOpen').onclick();assert.equal(get('bandwidth').value,17);
+ get('bandwidth').checkValidity=()=>true;get('bandwidthFilter').onclick();
+ assert.equal(context.analogBandwidth,17);
+});
+
+for(const reason of ['disconnected','baud change','GPIO change','unsupported'])test(`bandwidth buttons are disabled when ${reason}`,()=>{
+ const {context,get,radio,config}=fixture('C61');
+ if(reason==='disconnected')context.connected=false;
+ if(reason==='baud change')radio.changingBaud=true;
+ if(reason==='GPIO change')radio.changingGpio=true;
+ if(reason==='unsupported')radio.bandwidthRange=null;
+ vm.runInContext('state()',context);
+ for(const id of ['bandwidthOpen','bandwidthFilter','bandwidth'])assert.equal(get(id).disabled,true);
+ get('bandwidthOpen').onclick();get('bandwidthFilter').onclick();assert.equal(config().bandwidth,20);
+});
+
+test('firmware with an open-filter default selects Open and uses its advertised range',()=>{
+ const {context,get,radio,config}=fixture('H2');
+ radio.bandwidthRange=[4,11,1,0];vm.runInContext('applyRadioProfile()',context);
+ assert.equal(config().bandwidth,0);assert.equal(get('bandwidthOpen')['aria-pressed'],'true');
+ assert.equal(get('bandwidth').min,4);assert.equal(get('bandwidth').max,11);assert.equal(get('bandwidth').disabled,true);
+ get('bandwidthFilter').onclick();assert.equal(config().bandwidth,11);
 });

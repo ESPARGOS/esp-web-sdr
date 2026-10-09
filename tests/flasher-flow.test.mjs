@@ -51,6 +51,15 @@ test('connect first suggests both S31 applications and keeps all profiles select
  f.$('revision').value='esp32s31-stream';f.$('revision').onchange();await f.install();
  assert.ok(f.events.includes('write'));assert.ok(!f.events.some(e=>Array.isArray(e)&&e[0]==='baud'));
 });
+
+test('installer messages can be dismissed and new status updates become visible again',async()=>{
+ const f=await fixture({connectError:Error('USB permission denied')});
+ assert.equal(f.$('statusBanner').hidden,false);
+ f.$('dismissStatus').onclick();assert.equal(f.$('statusBanner').hidden,true);
+ await f.connect();assert.equal(f.$('statusBanner').hidden,false);
+ assert.equal(f.$('status').dataset.error,'true');assert.match(f.$('status').textContent,/USB permission denied/);
+ f.$('dismissStatus').onclick();assert.equal(f.$('statusBanner').hidden,true);
+});
 test('matching profile links survive detection; other-chip links select the detected chip',async()=>{
  for(const [search,expected] of [['?board=esp32s31-stream','esp32s31-stream'],['?board=esp32c61','esp32s31']]){
   const f=await fixture({search});await f.connect();assert.equal(f.$('revision').value,expected);

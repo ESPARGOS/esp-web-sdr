@@ -13,14 +13,14 @@ function applyRadioProfile(){
  const bandwidth=radio.bandwidthRange;
  analogBandwidth=bandwidth?(bandwidth[0]<=20&&bandwidth[1]>=20&&(20-bandwidth[0])%bandwidth[2]===0?20:bandwidth[3]):0;
  $('bandwidthControl').hidden=!bandwidth;
- if(bandwidth){$('bandwidth').min=bandwidth[0];$('bandwidth').max=bandwidth[1];$('bandwidth').step=bandwidth[2];$('bandwidth').value=analogBandwidth||bandwidth[1];$('bandwidthOpen').checked=analogBandwidth===0;}
+ if(bandwidth){$('bandwidth').min=bandwidth[0];$('bandwidth').max=bandwidth[1];$('bandwidth').step=bandwidth[2];$('bandwidth').value=analogBandwidth||bandwidth[1];}
  for(const option of $('bits').options)option.disabled=!radio.sampleBits.includes(Number(option.value));
  if(!radio.sampleBits.includes(Number($('bits').value)))$('bits').value=String(radio.sampleBits[0]);
 
  if(!radio.validFrequency(tuneFrequency)){tuneFrequency=2412;$('frequency').value='2412';}
  state();labels();
 }
-let spectrumMode=false,connectionBusy=false;
+let spectrumMode=false,connectionBusy=false,firmwareHandoff=false;
 let firmwareCheck=0,firmwareUpdate=null;
 let connected=false,paused=false,latest=null,trace=null,maximum=null,previous=0,key='',running=false,tuneFrequency=2412,analogBandwidth=20;
 let loopDone=Promise.resolve();
@@ -88,9 +88,10 @@ async function api(path,body){let value;
  return {json:async()=>value};
 }
 function error(e,communication=false){
- const box=$('error');box.textContent=e?.message||e;box.hidden=!e;
- if(e&&communication){const link=document.createElement('a');link.href='/flash.html';link.textContent='Install / update ESP-SDR firmware';box.append(' ',link);}
+ const box=$('error'),text=$('errorText');text.textContent=e?.message||e;box.hidden=!e;
+ if(e&&communication){const link=document.createElement('a');link.href='flash.html';link.textContent='Install / update ESP-SDR firmware';link.onclick=openFirmwareInstaller;text.append(' ',link);}
 }
+$('dismissError').onclick=()=>error('');
 function config(){return {frequency:loFrequency(),rate:Number($('rate').value),bits:Number($('bits').value),fft:Number($('fft').value),bandwidth:analogBandwidth,gainMode:gainMode,gain:Number($('gain').value),trigger:{mode:'free'}};}
 function clear(){trace=null;maximum=null;waterHist=[];if(!keepView)view={a:0,b:1};keepView=false;wc.fillStyle='#11191e';wc.fillRect(0,0,water.width,water.height);draw();}
 function resize(){const d=Math.min(devicePixelRatio||1,2);spec.width=Math.round(spec.clientWidth*d);spec.height=Math.round(spec.clientHeight*d);water.width=Math.round(water.clientWidth);water.height=Math.round(water.clientHeight);wc.fillStyle='#11191e';wc.fillRect(0,0,water.width,water.height);redrawWater();draw();labels();}
@@ -106,7 +107,7 @@ function measBar(c){
  $('meas').innerHTML=[item('Start',fmtHz(center-span/2)),item('Center',fmtHz(center)),item('Span',fmtHz(span)),item('Stop',fmtHz(center+span/2)),
   item('RBW',fmtHz(rbw)),item('Bins',`${n}`),item('Ref',`${top} dBFS`),item('Div',`${div} dB`),item('Det',det),item('Acq',acq),item('Mode',spec?'SPEC on-chip':'burst IQ')].join('');
 }
-function labels(f){const warning=connected?radio.frequencyWarning(tuneFrequency):'';$('tuningWarning').textContent=warning;$('tuningWarning').hidden=!warning;$('frequency').classList.toggle('offband',!!warning);$('frequency').title=warning;const c=f||config();drawAxis(c);measBar(c);}
+function labels(f){tuningWarning();const c=f||config();drawAxis(c);measBar(c);}
 function draw(){const w=spec.width,h=spec.height,d=Math.min(devicePixelRatio||1,2),floor=Number($('floor').value),range=Number($('range').value);sc.fillStyle='#182126';sc.fillRect(0,0,w,h);sc.lineWidth=d;sc.font=`${14*d}px Carlito,sans-serif`;
 for(let i=0;i<=4;i++){const y=i*h/4;sc.strokeStyle='#344047';sc.beginPath();sc.moveTo(0,y);sc.lineTo(w,y);sc.stroke();sc.fillStyle='#a1adb2';sc.fillText(`${Math.round(floor+range-i*range/4)}`,8*d,Math.max(16*d,y-5*d));}
 {const c=latest?{frequency:latest.frequency,rate:latest.rate}:config(),t=axisTicks(c,w);sc.strokeStyle='#202a2f';sc.beginPath();for(const f of t.minors){const x=Math.round(t.x(f))+.5;sc.moveTo(x,0);sc.lineTo(x,h);}sc.stroke();sc.strokeStyle='#33424a';sc.beginPath();for(const f of t.major){const x=Math.round(t.x(f))+.5;sc.moveTo(x,0);sc.lineTo(x,h);}sc.stroke();if(tuneFrequency!==c.frequency){const x=t.x(tuneFrequency*1e6);sc.save();sc.setLineDash([4*d,4*d]);sc.strokeStyle='#37c96490';sc.beginPath();sc.moveTo(x,0);sc.lineTo(x,h);sc.stroke();sc.restore();}drawAxis(c);}
@@ -141,9 +142,13 @@ async function loop(){
   }
  }finally{running=false;finishLoop();}
 }
+let serialWarningDismissedAt=0;
 function serialWarning(){
  const warning=$('serialWarning'),button=$('lowerBaud');
- warning.hidden=!connected||radio.droppedCaptures+radio.spectrumCrcErrors<3;
+ const errors=radio.droppedCaptures+radio.spectrumCrcErrors;
+ // Counters reset on a new device identity; dismissal never clears diagnostics.
+ if(!connected||errors<serialWarningDismissedAt)serialWarningDismissedAt=0;
+ warning.hidden=!connected||errors-serialWarningDismissedAt<3;
  const available=radio.supportsBaudChange&&radio.transport==='UART'&&radio.baudRate>1000000;
  button.hidden=!available;button.disabled=(!!radio.changingBaud||!!radio.changingGpio);
  button.textContent=radio.changingBaud?'Switching…':'Switch to 1 MBaud';
@@ -154,6 +159,10 @@ function serialWarning(){
    :radio.transport==='USB'?'Repeated capture / CRC errors. Check the USB connection or try a smaller FFT.'
    :'Repeated capture / CRC errors. Check the USB connection. Updated firmware enables a slower UART connection.';
 }
+$('dismissSerialWarning').onclick=()=>{
+ serialWarningDismissedAt=radio.droppedCaptures+radio.spectrumCrcErrors;
+ serialWarning();
+};
 function state(){
  firmwareWarning();
  updateGpioControls();
@@ -165,7 +174,7 @@ function state(){
  $('openOther').disabled=connected||$('connect').disabled||!navigator.serial;
  $('openUSB').disabled=connected||$('connect').disabled||!navigator.usb;
  $('openRecent').disabled=connected||$('connect').disabled||!savedPort();
- const warning=connected?radio.frequencyWarning(tuneFrequency):'';$('tuningWarning').textContent=warning;$('tuningWarning').hidden=!warning;$('frequency').classList.toggle('offband',!!warning);$('frequency').title=warning;
+ tuningWarning();
  for(const control of document.querySelectorAll('aside input,aside select'))control.disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio);
  const specOk=connected&&radio.canStreamSpectrum;
  $('specControls').hidden=!specOk;$('specMode').disabled=!specOk||(!!radio.changingBaud||!!radio.changingGpio);
@@ -197,11 +206,25 @@ function state(){
  $('gainAgc').disabled=gainDisabled||!radio.hasHardwareAgc;$('gainManual').disabled=gainDisabled;
  $('gainAgc').setAttribute('aria-pressed',String(gainMode==='HARDWARE'));$('gainManual').setAttribute('aria-pressed',String(gainMode==='MANUAL'));
  $('gain').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||gainMode!=='MANUAL'||!radio.hasGain;
- $('bandwidthOpen').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||!radio.bandwidthRange;$('bandwidth').disabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||!radio.bandwidthRange||$('bandwidthOpen').checked;
+ const bandwidthDisabled=!connected||(!!radio.changingBaud||!!radio.changingGpio)||!radio.bandwidthRange;
+ $('bandwidthOpen').disabled=bandwidthDisabled;$('bandwidthFilter').disabled=bandwidthDisabled;
+ $('bandwidthOpen').setAttribute('aria-pressed',String(analogBandwidth===0));$('bandwidthFilter').setAttribute('aria-pressed',String(analogBandwidth!==0));
+ $('bandwidth').disabled=bandwidthDisabled||analogBandwidth===0;
 }
+let dismissedTuningFrequency=null;
+function tuningWarning(){
+ const warning=connected?radio.frequencyWarning(tuneFrequency):'';
+ if(!warning)dismissedTuningFrequency=null;
+ $('tuningWarningText').textContent=warning;
+ $('tuningWarning').hidden=!warning||dismissedTuningFrequency===tuneFrequency;
+ $('frequency').classList.toggle('offband',!!warning);$('frequency').title=warning;
+}
+$('dismissTuningWarning').onclick=()=>{dismissedTuningFrequency=tuneFrequency;tuningWarning();};
+let dismissedFirmwareVersion=null;
 function firmwareWarning(){
  const version=radio.firmwareVersion,panel=$('firmwareWarning');
- panel.hidden=!connected||!version;
+ if(!connected)dismissedFirmwareVersion=null;
+ panel.hidden=!connected||!version||version===dismissedFirmwareVersion;
  $('deviceModel').title=connected&&version?.status==='known'?`Firmware: ${version.revision}\nBuilt: ${version.build_timestamp}`:'';
  if(panel.hidden)return;
  const result=version.status==='missing'
@@ -210,6 +233,7 @@ function firmwareWarning(){
  panel.hidden=result?.status!=='outdated';
  $('firmwareWarningText').textContent=result?.message||'';
 }
+$('dismissFirmwareWarning').onclick=()=>{dismissedFirmwareVersion=radio.firmwareVersion;firmwareWarning();};
 async function checkFirmwareUpdate(){
  const check=++firmwareCheck,installed=radio.firmwareVersion;
  firmwareUpdate=null;firmwareWarning();
@@ -273,8 +297,10 @@ async function changeGpio(pin,value){
   if(connected&&!paused)loop();
  }
 }
-function bandwidthChanged(){if(!$('bandwidthOpen').checked&&!$('bandwidth').checkValidity()){$('bandwidth').reportValidity();return;}analogBandwidth=$('bandwidthOpen').checked?0:Number($('bandwidth').value);clear();}
-$('bandwidthOpen').onchange=()=>{state();bandwidthChanged();};$('bandwidth').onchange=bandwidthChanged;
+function bandwidthChanged(){if($('bandwidth').disabled)return;if(!$('bandwidth').checkValidity()){$('bandwidth').reportValidity();return;}analogBandwidth=Number($('bandwidth').value);state();clear();}
+$('bandwidthOpen').onclick=()=>{if($('bandwidthOpen').disabled||analogBandwidth===0)return;$('bandwidth').value=analogBandwidth;analogBandwidth=0;state();clear();};
+$('bandwidthFilter').onclick=()=>{if($('bandwidthFilter').disabled||analogBandwidth!==0)return;$('bandwidth').disabled=false;bandwidthChanged();};
+$('bandwidth').onchange=bandwidthChanged;
 $('bandwidth').closest('label').addEventListener('wheel',e=>{
  const input=$('bandwidth');if(input.disabled||!e.deltaY||e.ctrlKey)return;
  e.preventDefault();const previous=input.value;
@@ -315,7 +341,8 @@ $('choosePort').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();openCon
 $('openRecent').onclick=()=>{closeConnectMenu(true);return $('connect').onclick();};
 $('openOther').onclick=()=>{closeConnectMenu(true);return $('connect').onclick({choosePort:true,kind:'webserial'});};
 $('openUSB').onclick=()=>{closeConnectMenu(true);return $('connect').onclick({choosePort:true,kind:'webusb'});};
-$('openFlasher').onclick=()=>closeConnectMenu(true);
+$('openFlasher').onclick=openFirmwareInstaller;
+$('updateFirmware').onclick=openFirmwareInstaller;
 $('connectMenu').onkeydown=e=>{
  if(e.key==='Escape'){e.preventDefault();closeConnectMenu(true);}
  else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){
@@ -325,9 +352,31 @@ $('connectMenu').onkeydown=e=>{
 };
 document.addEventListener('click',e=>{if(!e.target.closest('.connect-buttons'))closeConnectMenu();});
 document.addEventListener('focusin',e=>{if(!e.target.closest('.connect-buttons'))closeConnectMenu();});
-$('connect').onclick=async(ev)=>{closeConnectMenu();if(connectionBusy||radio.changingBaud||radio.changingGpio||(ev?.auto&&connected))return;connectionBusy=true;state();try{if(connected){connected=false;state();const done=api('disconnect',{});
- const timedOut=await Promise.race([done.then(()=>false),new Promise(r=>setTimeout(()=>r(true),2000))]);
- if(timedOut){await radio.closePort().catch(()=>{});await done.catch(()=>{});}}else{const port=await choosePort(ev);if(!port)return;await api('connect',{port});rememberPort(port);connected=true;checkFirmwareUpdate();spectrumMode=radio.canStreamSpectrum;applyRadioProfile();paused=false;previous=0;latest=null;clear();loop();}error('');}catch(e){error(e,!['NotFoundError','AbortError'].includes(e?.name));}finally{connectionBusy=false;state();}};
+async function disconnectRadio(){
+ connected=false;state();
+ const done=api('disconnect',{});let timer;
+ try{
+  const timedOut=await Promise.race([done.then(()=>false),new Promise(resolve=>{timer=setTimeout(()=>resolve(true),2000);})]);
+  if(timedOut){await radio.closePort();await done.catch(()=>{});}
+ }finally{clearTimeout(timer);}
+}
+async function openFirmwareInstaller(event){
+ event.preventDefault();closeConnectMenu(true);
+ if(connectionBusy||radio.changingBaud||radio.changingGpio){error('Wait for the current device operation to finish, then open the firmware installer again.');return;}
+ const url=event.currentTarget.href;
+ connectionBusy=true;firmwareHandoff=true;
+ let installer;
+ try{
+  // Open a blank tab during the click, then load the installer only after USB is free.
+  installer=window.open('about:blank','_blank');
+  if(installer)installer.opener=null;
+  if(connected||radio.port)await disconnectRadio();
+  if(installer&&!installer.closed)installer.location.replace(url);
+  else window.location.assign(url);
+ }catch(e){installer?.close();firmwareHandoff=false;error(e);}
+ finally{connectionBusy=false;state();}
+}
+$('connect').onclick=async(ev)=>{closeConnectMenu();if(connectionBusy||radio.changingBaud||radio.changingGpio||(ev?.auto&&(connected||firmwareHandoff)))return;if(!ev?.auto)firmwareHandoff=false;connectionBusy=true;state();try{if(connected){await disconnectRadio();}else{const port=await choosePort(ev);if(!port)return;await api('connect',{port});rememberPort(port);connected=true;checkFirmwareUpdate();spectrumMode=radio.canStreamSpectrum;applyRadioProfile();paused=false;previous=0;latest=null;clear();loop();}error('');}catch(e){error(e,!['NotFoundError','AbortError'].includes(e?.name));}finally{connectionBusy=false;state();}};
 $('pause').onclick=()=>{paused=!paused;previous=0;state();if(!paused){error('');loop();}};$('clear').onclick=clear;
 for(const id of ['rate','bits','fft'])$(id).onchange=()=>{state();labels();};
 $('frequency').onchange=()=>{tuneFrequency=Number($('frequency').value);labels();};

@@ -42,7 +42,7 @@ test('legacy date-only manifests compare at date resolution and profiles stay in
 function uiFixture(){
  const {c,radio}=fixture(),elements=new Map();radio.firmwareVersion={...version};
  Object.assign(c,{radio,connected:true,firmwareCheck:0,firmwareUpdate:null,$:id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);}});
- vm.runInContext(app.slice(app.indexOf('function firmwareWarning(){'),app.indexOf('function updateGpioControls(){')),c);
+ vm.runInContext(app.slice(app.indexOf('let dismissedFirmwareVersion='),app.indexOf('function updateGpioControls(){')),c);
  return {c,radio,elements};
 }
 test('UI warns for legacy firmware even offline, and links directly to the firmware installer',async()=>{
@@ -61,4 +61,75 @@ test('UI fetch is uncached, handles unavailable catalogs and discards late repli
  c.fetch=async()=>{throw Error('offline');};await c.checkFirmwareUpdate();assert.equal(elements.get('firmwareWarning').hidden,true);
  c.fetch=async()=>({ok:true,json:async()=>manifest({build_timestamp:'2026-10-07T00:00:00Z'})});await c.checkFirmwareUpdate();
  assert.equal(elements.get('firmwareWarning').hidden,false);assert.match(elements.get('deviceModel').title,/aaaaaaaa/);
+});
+
+test('firmware warnings stay dismissed during refreshes and return for a new connection',async()=>{
+ const {c,radio,elements}=uiFixture();radio.firmwareVersion={status:'missing'};
+ await c.checkFirmwareUpdate();assert.equal(elements.get('firmwareWarning').hidden,false);
+ elements.get('dismissFirmwareWarning').onclick();c.firmwareWarning();
+ await c.checkFirmwareUpdate();assert.equal(elements.get('firmwareWarning').hidden,true);
+ radio.firmwareVersion={status:'missing'};c.firmwareWarning();
+ assert.equal(elements.get('firmwareWarning').hidden,false);
+ elements.get('dismissFirmwareWarning').onclick();
+ c.connected=false;c.firmwareWarning();c.connected=true;c.firmwareWarning();
+ assert.equal(elements.get('firmwareWarning').hidden,false);
+});
+
+test('a pending catalog response does not reopen a dismissed firmware warning',async()=>{
+ const {c,elements}=uiFixture();let reply;
+ c.firmwareUpdate={status:'outdated',message:'Update available'};c.firmwareWarning();
+ elements.get('dismissFirmwareWarning').onclick();
+ c.fetch=()=>new Promise(resolve=>{reply=resolve;});
+ const pending=c.checkFirmwareUpdate();
+ reply({ok:true,json:async()=>manifest({build_timestamp:'2026-10-07T00:00:00Z'})});
+ await pending;assert.equal(elements.get('firmwareWarning').hidden,true);
+});
+
+function handoffFixture({blocked=false,fail=false}={}){
+ const events=[],elements=new Map();let release,timer;
+ const $=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);};
+ const tab={opener:{},location:{replace:url=>events.push(['navigate',url])},close:()=>events.push('close tab')};
+ const c=vm.createContext({$,connected:true,connectionBusy:false,firmwareHandoff:false,
+  radio:{port:{},closePort:async()=>{events.push('force close');c.radio.port=null;release();}},
+  window:{open:()=>{events.push('open blank');return blocked?null:tab;},location:{assign:url=>events.push(['navigate same tab',url])}},
+  closeConnectMenu(){},state(){},error:e=>events.push(['error',e.message||e]),
+  setTimeout:fn=>{timer=fn;return 1;},clearTimeout:()=>{timer=null;},
+  choosePort:async()=>{events.push('choose port');return null;},
+  api:async path=>{assert.equal(path,'disconnect');assert.equal(c.connected,false);events.push('disconnect');
+   if(fail)throw Error('Cannot release device');
+   await new Promise(resolve=>{release=resolve;});c.radio.port=null;events.push('released');
+  }
+ });
+ vm.runInContext(app.slice(app.indexOf('async function disconnectRadio(){'),app.indexOf("$('pause').onclick=")),c);
+ vm.runInContext(app.slice(app.indexOf("$('openFlasher').onclick="),app.indexOf("$('connectMenu').onkeydown=")),c);
+ const click=()=>({preventDefault(){events.push('prevent navigation');},currentTarget:{href:'https://example.test/espsdr/app/flash.html'}});
+ return {c,$,events,tab,click,release:()=>release(),timeout:()=>timer()};
+}
+for(const link of ['updateFirmware','openFlasher'])test(`${link} releases the port before navigating and prevents automatic reconnect`,async()=>{
+ const f=handoffFixture(),pending=f.$(link).onclick(f.click());
+ assert.deepEqual(f.events,['prevent navigation','open blank','disconnect']);
+ assert.equal(f.tab.opener,null);assert.equal(f.c.connectionBusy,true);
+ f.release();await pending;
+ assert.deepEqual(f.events.slice(-2),['released',['navigate','https://example.test/espsdr/app/flash.html']]);
+ assert.equal(f.c.connectionBusy,false);assert.equal(f.c.radio.port,null);
+ await f.$('connect').onclick({auto:true});assert.equal(f.events.includes('choose port'),false);
+ await f.$('connect').onclick();assert.equal(f.events.includes('choose port'),true);assert.equal(f.c.firmwareHandoff,false);
+});
+test('blocked popups fall back to the current tab only after releasing USB',async()=>{
+ const f=handoffFixture({blocked:true}),pending=f.$('updateFirmware').onclick(f.click());
+ assert.equal(f.events.some(e=>Array.isArray(e)),false);
+ f.release();await pending;
+ assert.deepEqual(f.events.slice(-2),['released',['navigate same tab','https://example.test/espsdr/app/flash.html']]);
+});
+test('stalled disconnect forces port closure before opening the installer',async()=>{
+ const f=handoffFixture(),pending=f.$('updateFirmware').onclick(f.click());
+ f.timeout();await pending;
+ assert.deepEqual(f.events.slice(-3),['force close','released',['navigate','https://example.test/espsdr/app/flash.html']]);
+});
+test('failed or busy device operations do not open the installer against an occupied port',async()=>{
+ const f=handoffFixture({fail:true});await f.$('updateFirmware').onclick(f.click());
+ assert.equal(f.events.includes('close tab'),true);assert.equal(f.c.connectionBusy,false);assert.equal(f.c.firmwareHandoff,false);
+ assert.equal(f.events.some(e=>Array.isArray(e)&&e[0].startsWith('navigate')),false);
+ const busy=handoffFixture();busy.c.radio.changingBaud=true;
+ await busy.$('updateFirmware').onclick(busy.click());assert.equal(busy.events.includes('open blank'),false);
 });

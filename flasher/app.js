@@ -31,7 +31,8 @@ class SDRLoader extends ESPLoader {
  }
 }
 const log=text=>{$('log').textContent+=text;$('log').scrollTop=$('log').scrollHeight;};
-function status(text,error=false){$('status').textContent=text;$('status').dataset.error=String(error);}
+function status(text,error=false){$('status').textContent=text;$('status').dataset.error=String(error);$('statusBanner').hidden=false;}
+$('dismissStatus').onclick=()=>{$('statusBanner').hidden=true;};
 function buttons(){const variant=firmware?.variants[$('revision').value];$('s3-bridge-hint').hidden=variant?.target!=='esp32s3';const soapy=variant?.application==='soapysdr';$('open-application').href=soapy?'https://github.com/ESPARGOS/SoapyESPSDR':'index.html';$('open-application').textContent=soapy?'Set up SoapyESPSDR ↗':'Open ESP-WebSDR ↗';const supported=SerialConnection.supported()&&isSecureContext;$('connect').disabled=!firmware||busy||!!transport||!supported;$('revision').disabled=!firmware||busy||(!loader&&!lastPort);$('install').disabled=busy||(!loader&&!lastPort)||!$('revision').value;$('disconnect').disabled=busy||!transport;$('chooseConnection').disabled=$('connect').disabled;$('connectAlternative').disabled=$('connect').disabled||!navigator[alternativeConnection==='webusb'?'usb':'serial'];if(busy||transport)closeConnectMenu();}
 $('connect').textContent=`Connect via ${connectionLabel(defaultConnection)}`;
 $('connectAlternative').textContent=`Choose ${connectionLabel(alternativeConnection)} Device…`;

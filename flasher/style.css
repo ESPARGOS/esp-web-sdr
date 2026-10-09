@@ -47,3 +47,9 @@ dd{margin:0;overflow-wrap:anywhere}
 #connectAlternative:hover:not(:disabled),#connectAlternative:focus-visible{background:#293135}
 .connect-buttons button:focus-visible{outline:2px solid #dee2e6;outline-offset:2px;z-index:1}
 @media(max-width:500px){.connect-buttons{width:100%}.connect-buttons #connect{flex:1;min-width:0}}
+
+#statusBanner{position:relative;padding-right:44px;min-height:36px}
+#statusBanner[hidden]{display:none}
+#dismissStatus{position:absolute;top:0;right:0;width:36px;height:36px;min-height:36px;margin:0;padding:0;background:transparent;color:inherit;border:1px solid transparent;font-size:24px;line-height:1}
+#dismissStatus:hover{border-color:currentColor}
+#dismissStatus:focus-visible{outline:2px solid currentColor;outline-offset:1px}
