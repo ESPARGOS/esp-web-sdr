@@ -1,5 +1,7 @@
 # ESP-WebSDR
 
+### Try it yourself: [Project overview](https://espargos.net/espsdr/) · [Browser SDR viewer](https://espargos.net/espsdr/app/) · [Browser firmware installer](https://espargos.net/espsdr/app/flash.html)
+
 <img src="docs/espargos-logo.png" width="40%" align="right" alt="ESPARGOS logo">
 
 Browser spectrum viewer and firmware installer for ESP32 chips, with live
