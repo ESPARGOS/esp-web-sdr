@@ -13,6 +13,7 @@ async function fixture({
   search = '',
   vendor = 0x10c4,
   fallback = false,
+  maxBaud = Infinity,
   flash = '16MB',
   crystal = 40,
   usbOnly = false,
@@ -105,7 +106,7 @@ async function fixture({
     }
     async changeBaud() {
       events.push(['baud', this.baudrate]);
-      if (!fallback) this.transport.baudrate = this.baudrate;
+      if (!fallback && this.baudrate <= maxBaud) this.transport.baudrate = this.baudrate;
     }
     async writeFlash() {
       events.push('write');
@@ -217,7 +218,7 @@ test('switching from Soapy to viewer negotiates UART speed only at installation'
   await f.install();
   assert.deepEqual(f.events, [['loader', 115200], ['baud', 2000000], 'download', 'write', 'disconnect']);
 });
-test('native USB stays at ROM baud and UART fallback prevents any write', async () => {
+test('native USB stays at ROM baud and a UART without any working fast speed prevents writes', async () => {
   const usb = await fixture({ vendor: 0x303a });
   await usb.connect();
   await usb.install();
@@ -228,7 +229,24 @@ test('native USB stays at ROM baud and UART fallback prevents any write', async 
   await uart.install();
   assert.ok(!uart.events.includes('download'));
   assert.ok(!uart.events.includes('write'));
-  assert.match(uart.$('status').textContent, /UART too slow/);
+  assert.match(uart.$('status').textContent, /Unable to set the UART flashing speed/);
+});
+test('a UART that cannot reach 2 Mbaud flashes at a lower speed and warns about the viewer', async () => {
+  const f = await fixture({ maxBaud: 921600 });
+  await f.connect();
+  f.$('revision').value = 'esp32s31';
+  f.$('revision').onchange();
+  await f.install();
+  assert.deepEqual(
+    f.events.filter((e) => Array.isArray(e) && e[0] === 'baud'),
+    [
+      ['baud', 2000000],
+      ['baud', 921600],
+    ],
+  );
+  assert.ok(f.events.includes('write'));
+  assert.match(f.$('status').textContent, /Firmware installed/);
+  assert.match(f.$('status').textContent, /could not run at 2 Mbaud/);
 });
 test('incompatible selections fail before flashing and leave the connection usable', async () => {
   const f = await fixture({ flash: '4MB' });

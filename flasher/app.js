@@ -13,7 +13,8 @@ import { finishSession } from './reset.mjs';
 const $ = (id) => document.getElementById(id);
 const manifestUrl = new URL('../firmware/manifest.json', import.meta.url);
 const UART_BAUDRATE = 2000000;
-const UART_SPEED_WARNING = 'UART too slow for ESP-WebSDR, choose a different dev kit';
+const UART_SPEED_WARNING =
+  "This UART adapter could not run at 2 Mbaud while flashing. If the viewer reports transfer errors, use Switch to 1 Mbaud there or connect the board's native USB port.";
 class UartSpeedError extends Error {
   constructor() {
     super(UART_SPEED_WARNING);
@@ -63,6 +64,25 @@ class SDRLoader extends ESPLoader {
     if (this.chip.CHIP_NAME === 'ESP32-C2') this.detectedCrystal = await this.chip.getCrystalFreq(this);
     if (this.chip.CHIP_NAME === 'ESP32-C5') this.chip.SPI_REG_BASE = 0x60003000;
   }
+}
+// The viewer needs 2 Mbaud. Some USB-UART adapters fail the bootloader's baud
+// switch but still work for the viewer, so fall back to a slower flashing speed
+// instead of refusing to install, and warn afterwards. Returns false when the
+// requested speed was not reached.
+const FALLBACK_BAUDRATES = [921600, 460800];
+async function setFlashingBaud(baud) {
+  status('Setting flashing speed…');
+  for (const rate of baud === UART_BAUDRATE ? [baud, ...FALLBACK_BAUDRATES] : [baud]) {
+    loader.baudrate = rate;
+    try {
+      await loader.changeBaud();
+    } catch (e) {
+      if (!(e instanceof UartSpeedError)) throw e;
+    }
+    if (transport.baudrate === rate) return rate === baud;
+  }
+  // Never write firmware at an unknown speed.
+  throw Error('Unable to set the UART flashing speed.');
 }
 const log = (text) => {
   $('log').textContent += text;
@@ -248,14 +268,7 @@ $('install').onclick = async () => {
   $('progress').value = 0;
   try {
     const baud = uart ? flashingBaudRate(variant) : 115200;
-    if (transport.baudrate !== baud) {
-      status('Setting flashing speed…');
-      loader.baudrate = baud;
-      await loader.changeBaud();
-    }
-    // Reject a loader fallback before downloading or writing any firmware.
-    if (transport.baudrate !== baud)
-      throw baud === UART_BAUDRATE ? new UartSpeedError() : Error('Unable to set the UART flashing speed.');
+    const slowUart = transport.baudrate !== baud && !(await setFlashingBaud(baud));
     status('Downloading and checking firmware…');
     const fileArray = await checkedImages(variant, $('revision').value, manifestUrl),
       total = fileArray.reduce((s, f) => s + f.data.length, 0);
@@ -284,7 +297,7 @@ $('install').onclick = async () => {
     status('Starting installed firmware…');
     const reset = await finishSession(loader, transport, disconnect, log);
     status(
-      `Firmware installed and verified for ${variant.label}. ${reset ? 'Reset requested.' : 'Automatic reset could not be confirmed. Release BOOT, then press RESET or unplug and reconnect.'} ${applicationGuidance(variant)}`,
+      `Firmware installed and verified for ${variant.label}. ${reset ? 'Reset requested.' : 'Automatic reset could not be confirmed. Release BOOT, then press RESET or unplug and reconnect.'} ${applicationGuidance(variant)}${slowUart ? ` ${UART_SPEED_WARNING}` : ''}`,
     );
   } catch (e) {
     status(`Installation failed: ${e.message || e} Reconnect in BOOT mode and retry.`, true);
