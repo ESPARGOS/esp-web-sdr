@@ -62,6 +62,23 @@ function fft(re, im) {
 }
 // Only one capture is processed at a time; reuse the FFT workspace and window.
 let spectrumWorkspace;
+// Where each chip received a test tone over the air (one board per chip, see
+// esp-sdr docs/rx-controls.md). Outside these ranges reception is unlikely.
+const MEASURED_RANGES = {
+  ESP32: [[1850, 2750]],
+  C2: [[1850, 2750]],
+  C3: [[1850, 2750]],
+  C5: [
+    [2200, 2650],
+    [5180, 5800],
+  ],
+  C6: [[1850, 2750]],
+  C61: [[2200, 2750]],
+  H2: [[2300, 2650]],
+  S2: [[1850, 2750]],
+  S3: [[1850, 2750]],
+};
+
 // Firmware rate codes: the index into this table is the code sent in CAP16/CAP20.
 const RATE_CODES = [
   80000000, 40000000, 20000000, 10000000, 8000000, 4000000, 16000000, 32000000, 10666667, 6400000,
@@ -791,11 +808,18 @@ class BurstSerialRadio {
       (this.family === 'C5' && f >= 5150 && f <= 5895)
     )
       return '';
-    return this.family === 'C5'
-      ? 'Outside the 2.4 GHz ISM band and the supported 5 GHz Wi-Fi band. The PLL may not lock, and the spectrum may not match the selected center frequency.'
-      : 'Outside the 2.4 GHz ISM band. The PLL may not lock, and the spectrum may not match the selected center frequency.';
+    const band =
+      this.family === 'C5'
+        ? 'Outside the 2.4 GHz ISM band and the supported 5 GHz Wi-Fi band.'
+        : 'Outside the 2.4 GHz ISM band.';
+    const measured = MEASURED_RANGES[this.family];
+    const tested = measured && !measured.some(([lo, hi]) => f >= lo && f <= hi);
+    const chip = this.family === 'ESP32' ? 'ESP32' : 'ESP32-' + this.family;
+    const ranges = measured?.map(([lo, hi]) => `${lo}–${hi} MHz`).join(' and ');
+    return tested
+      ? `${band} On our test board, the ${chip} received a test tone at ${ranges}, which does not include this frequency.`
+      : `${band} The PLL may not lock, and the spectrum may not match the selected center frequency.`;
   }
-
   nearestFrequency(f) {
     f = Math.round(f);
     if (this.hasExtendedTune && this.tuneRange)
