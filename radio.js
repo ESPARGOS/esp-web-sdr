@@ -77,6 +77,7 @@ const MEASURED_RANGES = {
   H2: [[2300, 2650]],
   S2: [[1850, 2750]],
   S3: [[1850, 2750]],
+  S31: [[2150, 2750]],
 };
 
 // Firmware rate codes: the index into this table is the code sent in CAP16/CAP20.
