@@ -62,6 +62,47 @@ function fft(re, im) {
 }
 // Only one capture is processed at a time; reuse the FFT workspace and window.
 let spectrumWorkspace;
+// Firmware rate codes: the index into this table is the code sent in CAP16/CAP20.
+const RATE_CODES = [
+  80000000, 40000000, 20000000, 10000000, 8000000, 4000000, 16000000, 32000000, 10666667, 6400000,
+];
+
+// Decode a CAP16 (8-bit) or CAP20 (packed 10-bit) payload into interleaved
+// float I/Q scaled to +-1. Q is negated so that positive frequencies are above
+// the LO, matching the receiver's mixing convention.
+function decodeIQ(bytes, n, bits) {
+  const iq = new Float32Array(n * 2);
+  if (bits === 8) {
+    for (let j = 0; j < n; j++) {
+      iq[2 * j] = ((bytes[2 * j] << 24) >> 24) / 128;
+      iq[2 * j + 1] = -((bytes[2 * j + 1] << 24) >> 24) / 128;
+    }
+    return iq;
+  }
+  // 10-bit samples are packed LSB first: I in bits 0-9, Q in bits 10-19.
+  let acc = 0,
+    held = 0,
+    k = 0;
+  for (let j = 0; j < n; j++) {
+    while (held < 20) {
+      acc |= bytes[k++] << held;
+      held += 8;
+    }
+    const word = acc & 0xfffff;
+    acc >>>= 20;
+    held -= 20;
+    iq[2 * j] = (((word & 1023) << 22) >> 22) / 512;
+    iq[2 * j + 1] = -(((word >>> 10) << 22) >> 22) / 512;
+  }
+  return iq;
+}
+
+function argmax(values) {
+  let best = 0;
+  for (let j = 1; j < values.length; j++) if (values[j] > values[best]) best = j;
+  return best;
+}
+
 function spectrum(iq, n) {
   if (!spectrumWorkspace || spectrumWorkspace.n !== n) {
     const window = Float64Array.from(
@@ -467,73 +508,71 @@ class BurstSerialRadio {
     this.applyIdentity(this.identity);
     await this.command('CAPS');
     const caps = await this.line();
-    this.supportsBaudChange = false;
-    this.transport = null;
-    if (caps.split(' ').includes('UARTBAUD')) {
-      await this.command('TRANSPORT?');
-      const t = /^TRANSPORT (UART|USB) (\d+)$/.exec(await this.line());
-      if (!t || (t[1] === 'UART' ? Number(t[2]) !== this.baudRate : Number(t[2]) !== 0))
-        throw Error('Invalid serial transport response');
-      this.transport = t[1];
-      this.supportsBaudChange = this.transport === 'UART';
-    }
+    const has = (flag) => caps.split(' ').includes(flag);
+
+    await this.negotiateTransport(has('UARTBAUD'));
     if (this.family === 'S3')
-      this.rxRates = [
-        80000000,
-        ...(caps.split(' ').includes('RX40') ? [40000000] : []),
-        ...(caps.split(' ').includes('RX16') ? [16000000] : []),
-      ];
-    this.hasSerialLease = caps.split(' ').some((c) => c === 'SERIALLEASE' || c === 'DUALSERIAL');
-    this.hasExtendedTune = caps.split(' ').includes('TUNEEXT');
-    this.tuneRange = null;
-    if (this.hasExtendedTune) {
-      await this.command('RANGE?');
-      const h = (await this.line('RANGE ')).split(' '),
-        lo = Number(h[1]),
-        hi = Number(h[2]);
-      if (
-        h.length !== 4 ||
-        !Number.isInteger(lo) ||
-        !Number.isInteger(hi) ||
-        lo < 100 ||
-        hi > 6000 ||
-        lo >= hi ||
-        h[3] !== '1'
-      )
-        throw Error('Invalid tuning range');
-      this.tuneRange = [lo, hi];
-    }
-    this.hasAnalogFilter = caps.split(' ').includes('LPFANA');
-    this.hasAnalogBandwidth = this.family !== 'S3' && caps.split(' ').includes('ALPF');
-    this.hasFilter12 = this.family !== 'S3' && caps.split(' ').includes('LPF12');
-    this.hasFilter = caps.split(' ').includes('LPF') || this.hasAnalogFilter;
-    this.hasGain = caps.split(' ').includes('GAIN');
-    this.hasSpec = caps.split(' ').includes('SPEC');
-    this.hasSpecN = caps.split(' ').includes('SPECN');
-    this.hasSpecStats = caps.split(' ').includes('SPECSTAT');
-    this.hasHardwareAgc = caps.split(' ').includes('HWAGC');
-    if (caps.split(' ').includes('RXLIMITS')) {
-      await this.command('LIMITS?');
-      this.applyLimits(await this.line('LIMITS '));
-    } else {
-      await this.command('GAIN?');
-      const g = (await this.line('GAIN ')).split(' ');
-      this.applyLimits(
-        'LIMITS ' +
-          JSON.stringify({
-            gain: [Number(g[3]), Number(g[4]), 1],
-            bandwidth: null,
-            rates: this.rxRates,
-            bits: [8, 10],
-          }),
-      );
-    }
+      this.rxRates = [80000000, ...(has('RX40') ? [40000000] : []), ...(has('RX16') ? [16000000] : [])];
+    this.hasSerialLease = has('SERIALLEASE') || has('DUALSERIAL');
+    this.hasExtendedTune = has('TUNEEXT');
+    this.tuneRange = this.hasExtendedTune ? await this.negotiateTuneRange() : null;
+    this.hasAnalogFilter = has('LPFANA');
+    this.hasAnalogBandwidth = this.family !== 'S3' && has('ALPF');
+    this.hasFilter12 = this.family !== 'S3' && has('LPF12');
+    this.hasFilter = has('LPF') || this.hasAnalogFilter;
+    this.hasGain = has('GAIN');
+    this.hasSpec = has('SPEC');
+    this.hasSpecN = has('SPECN');
+    this.hasSpecStats = has('SPECSTAT');
+    this.hasHardwareAgc = has('HWAGC');
+    await this.negotiateLimits(has('RXLIMITS'));
     await this.negotiateVersion(caps);
     await this.negotiateGpio(caps);
     await this.negotiateSpectrum(caps);
     this.deviceName = this.family === 'ESP32' ? 'ESP32' : 'ESP32-' + this.family;
     return { identity: this.identity, port: this.deviceName, family: this.family, filter: this.hasFilter };
   }
+  // Firmware with UARTBAUD reports which interface we are on, and the UART's baud rate.
+  async negotiateTransport(supported) {
+    this.supportsBaudChange = false;
+    this.transport = null;
+    if (!supported) return;
+    await this.command('TRANSPORT?');
+    const t = /^TRANSPORT (UART|USB) (\d+)$/.exec(await this.line());
+    if (!t || (t[1] === 'UART' ? Number(t[2]) !== this.baudRate : Number(t[2]) !== 0))
+      throw Error('Invalid serial transport response');
+    this.transport = t[1];
+    this.supportsBaudChange = this.transport === 'UART';
+  }
+  // "RANGE <lowest MHz> <highest MHz> 1": the frequencies FREQ will attempt.
+  async negotiateTuneRange() {
+    await this.command('RANGE?');
+    const h = (await this.line('RANGE ')).split(' ');
+    const lo = Number(h[1]),
+      hi = Number(h[2]);
+    const valid =
+      h.length === 4 && Number.isInteger(lo) && Number.isInteger(hi) && lo >= 100 && hi <= 6000 && lo < hi;
+    if (!valid || h[3] !== '1') throw Error('Invalid tuning range');
+    return [lo, hi];
+  }
+  // Newer firmware sends all receiver limits at once; older firmware only its gain range.
+  async negotiateLimits(supported) {
+    if (supported) {
+      await this.command('LIMITS?');
+      this.applyLimits(await this.line('LIMITS '));
+      return;
+    }
+    await this.command('GAIN?');
+    const g = (await this.line('GAIN ')).split(' ');
+    const limits = {
+      gain: [Number(g[3]), Number(g[4]), 1],
+      bandwidth: null,
+      rates: this.rxRates,
+      bits: [8, 10],
+    };
+    this.applyLimits('LIMITS ' + JSON.stringify(limits));
+  }
+
   async negotiateVersion(caps) {
     this.firmwareVersion = { status: 'missing' };
     if (!caps.split(' ').includes('VERSION')) return;
@@ -689,12 +728,7 @@ class BurstSerialRadio {
       ) ||
       !Array.isArray(rates) ||
       !rates.length ||
-      rates.some(
-        (r) =>
-          ![
-            80000000, 40000000, 20000000, 10000000, 8000000, 4000000, 16000000, 32000000, 10666667, 6400000,
-          ].includes(r),
-      ) ||
+      rates.some((r) => !RATE_CODES.includes(r)) ||
       new Set(rates).size !== rates.length ||
       !Array.isArray(bits) ||
       !bits.length ||
@@ -761,6 +795,7 @@ class BurstSerialRadio {
       ? 'Outside the 2.4 GHz ISM band and the supported 5 GHz Wi-Fi band. The PLL may not lock, and the spectrum may not match the selected center frequency.'
       : 'Outside the 2.4 GHz ISM band. The PLL may not lock, and the spectrum may not match the selected center frequency.';
   }
+
   nearestFrequency(f) {
     f = Math.round(f);
     if (this.hasExtendedTune && this.tuneRange)
@@ -882,9 +917,7 @@ class BurstSerialRadio {
   }
   async capture(c) {
     return this.run(async () => {
-      const divider = [
-        80000000, 40000000, 20000000, 10000000, 8000000, 4000000, 16000000, 32000000, 10666667, 6400000,
-      ].indexOf(c.rate);
+      const divider = RATE_CODES.indexOf(c.rate);
       if (
         divider < 0 ||
         !this.rxRates.includes(c.rate) ||
@@ -896,38 +929,9 @@ class BurstSerialRadio {
       await this.tune(c.frequency, c.bandwidth ?? 0);
       const gain = await this.setGain(c.gainMode, c.gain);
       const { bytes, n, captureUs, retries } = await this.capturePacket(c, divider);
-      const iq = new Float32Array(n * 2);
-      let acc = 0,
-        bits = 0,
-        k = 0;
-      for (let j = 0; j < n; j++) {
-        let i, q;
-        if (c.bits === 8) {
-          i = bytes[j * 2];
-          q = bytes[j * 2 + 1];
-          if (i >= 128) i -= 256;
-          if (q >= 128) q -= 256;
-          i *= 4;
-          q *= 4;
-        } else {
-          while (bits < 20) {
-            acc |= bytes[k++] << bits;
-            bits += 8;
-          }
-          const w = acc & 0xfffff;
-          acc >>>= 20;
-          bits -= 20;
-          i = w & 1023;
-          q = w >>> 10;
-          if (i >= 512) i -= 1024;
-          if (q >= 512) q -= 1024;
-        }
-        iq[2 * j] = i / 512;
-        iq[2 * j + 1] = -q / 512;
-      }
+      const iq = decodeIQ(bytes, n, c.bits);
       const ps = spectrum(iq, c.fft);
-      let peak = 0;
-      for (let j = 1; j < ps.length; j++) if (ps[j] > ps[peak]) peak = j;
+      const peak = argmax(ps);
       const elapsed = performance.now() - start;
       this.last = {
         iq,
