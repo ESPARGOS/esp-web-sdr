@@ -25,3 +25,11 @@ test('warnings mention the measured reception range only outside it', () => {
   const s31 = radioFor('S31SDR 6 burst 16380');
   assert.match(s31.frequencyWarning(2200), /PLL may not lock/); // not measured: generic text
 });
+
+test('captures report the fraction of clipped samples', () => {
+  const context = vm.createContext({ performance });
+  vm.runInContext(source + ';globalThis.clip = clippedFraction; globalThis.decode = decodeIQ;', context);
+  const bytes8 = Uint8Array.from([127, 0, 0, 0, 0, 0x80, 1, 1]); // 4 samples: 2 at full scale
+  assert.equal(context.clip(context.decode(bytes8, 4, 8), 8), 0.5);
+  assert.equal(context.clip(context.decode(Uint8Array.from([5, 6, 7, 8]), 2, 8), 8), 0);
+});

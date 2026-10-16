@@ -533,12 +533,14 @@ function render(f) {
   pushWater([Float32Array.from(f.spectrum)]);
   paintRows([waterHist[0]], 0);
   autoScale(trace);
+  // The Wi-Fi AGC does not back off for strong continuous signals, so say when the ADC clips.
+  const clipping = f.clipped > 0.001 ? ' · clipping: lower the gain' : '';
   $('gainStatus').textContent =
-    f.gain_actual?.mode === 'HARDWARE'
+    (f.gain_actual?.mode === 'HARDWARE'
       ? 'Hardware AGC'
       : f.gain_actual
         ? `Manual · index ${f.gain_actual.index}`
-        : 'Update SDR firmware for gain control.';
+        : 'Update SDR firmware for gain control.') + clipping;
   $('empty').hidden = true;
   labels(f);
   $('fpsLabel').textContent = 'frames/s';

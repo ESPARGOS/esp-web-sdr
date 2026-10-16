@@ -114,6 +114,15 @@ function decodeIQ(bytes, n, bits) {
   return iq;
 }
 
+// Fraction of samples with I or Q at the converter's full scale (clipping).
+function clippedFraction(iq, bits) {
+  const limit = bits === 8 ? 127 / 128 : 511 / 512;
+  let clipped = 0;
+  for (let j = 0; j < iq.length; j += 2)
+    if (Math.abs(iq[j]) >= limit || Math.abs(iq[j + 1]) >= limit) clipped++;
+  return iq.length ? clipped / (iq.length / 2) : 0;
+}
+
 function argmax(values) {
   let best = 0;
   for (let j = 1; j < values.length; j++) if (values[j] > values[best]) best = j;
@@ -979,6 +988,7 @@ class BurstSerialRadio {
         elapsed_ms: elapsed,
         delivered_ksps: n / elapsed,
         crc_ok: true,
+        clipped: clippedFraction(iq, c.bits),
         iq,
       };
     });
