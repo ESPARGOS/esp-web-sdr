@@ -612,79 +612,89 @@ $('dismissSerialWarning').onclick = () => {
   serialWarningDismissedAt = radio.droppedCaptures + radio.spectrumCrcErrors;
   serialWarning();
 };
+// Bring every control in line with the connection and receiver state.
 function state() {
   firmwareWarning();
   updateGpioControls();
   if (!connected || !spectrumMode) $('chipStats').hidden = true;
   serialWarning();
+  tuningWarning();
+  // Controls stay locked while the firmware is switching baud rate or GPIOs.
+  const busy = !!radio.changingBaud || !!radio.changingGpio;
+  const usable = connected && !busy;
+  updateConnectionControls();
+  for (const control of document.querySelectorAll('aside input,aside select')) control.disabled = !usable;
+  updateCaptureModeControls(usable);
+  updateRateAndFftOptions();
+  updateGainAndBandwidthControls(usable);
+}
+function updateConnectionControls() {
   $('baudStatus').hidden = !connected || radio.transport !== 'UART';
   $('baudStatus').textContent = radio.transport === 'UART' ? `${radio.baudRate / 1000000} MBaud` : '';
   $('connect').disabled = connectionBusy || !!radio.changingBaud || !!radio.changingGpio;
   $('openOther').disabled = connected || $('connect').disabled || !navigator.serial;
   $('openUSB').disabled = connected || $('connect').disabled || !navigator.usb;
   $('openRecent').disabled = connected || $('connect').disabled || !savedPort();
-  tuningWarning();
-  for (const control of document.querySelectorAll('aside input,aside select'))
-    control.disabled = !connected || !!radio.changingBaud || !!radio.changingGpio;
-  const specOk = connected && radio.canStreamSpectrum;
-  $('specControls').hidden = !specOk;
-  $('specMode').disabled = !specOk || !!radio.changingBaud || !!radio.changingGpio;
-  $('iqMode').disabled = !connected || !!radio.changingBaud || !!radio.changingGpio;
-  if (!specOk) spectrumMode = false;
-  $('iqMode').setAttribute('aria-pressed', String(!spectrumMode));
-  $('specMode').setAttribute('aria-pressed', String(spectrumMode));
-  $('iqControls').hidden = spectrumMode;
-  $('specOptions').hidden = !spectrumMode;
-  const options = $(spectrumMode ? 'specOptions' : 'iqControls');
-  if ($('fftControl').parentElement !== options) options.prepend($('fftControl'));
-  $('specRow').disabled = !specOk || !spectrumMode || !!radio.changingBaud || !!radio.changingGpio;
-  $('specDetector').disabled = $('specRow').disabled;
-  if (connected && spectrumMode) $('bits').disabled = true;
-  {
-    const specOn = connected && spectrumMode;
-    for (const o of $('rate').options) {
-      o.disabled = specOn && !radio.spectrumProfiles(Number(o.value)).length;
-      o.hidden = o.disabled;
-    }
-    if (specOn && !radio.spectrumProfiles(Number($('rate').value)).length)
-      $('rate').value = String(radio.specCapabilities.profiles[0][0]);
-    const sizes = specOn ? specSizes(Number($('rate').value)) : [512, 1024, 2048, 4096];
-    for (const o of $('fft').options) {
-      o.disabled = !sizes.includes(Number(o.value));
-      o.hidden = o.disabled;
-    }
-    $('specNote').hidden = !specOn;
-    $('specNote').textContent = radio.spectrumContinuous(Number($('rate').value), Number($('fft').value))
-      ? 'Continuous RF capture; only selected FFT windows are analyzed. Skipped work and dropped frames are reported.'
-      : 'On-chip FFT of repeated snapshots. Reception has gaps between snapshots.';
-    if (!sizes.includes(Number($('fft').value)))
-      $('fft').value = String(specOn ? sizes[sizes.length - 1] : 2048);
-  }
   $('deviceModel').textContent = connected ? radio.deviceName || 'ESP32-' + radio.family : '';
   $('deviceModel').hidden = !connected;
   $('chipIdentity').hidden = !connected;
   $('status').textContent = connected ? (paused ? 'Paused' : 'Receiving') : 'Disconnected';
   $('connect').textContent = connected ? 'Disconnect' : 'Connect ESP-SDR';
   $('light').classList.toggle('on', connected && !paused);
-  $('pause').disabled = !connected || !!radio.changingBaud || !!radio.changingGpio;
   $('pause').textContent = paused ? 'Resume' : 'Pause';
-
+}
+// I/Q streaming vs. on-chip spectrum: only offer spectra where the firmware has them.
+function updateCaptureModeControls(usable) {
+  const specOk = connected && radio.canStreamSpectrum;
+  if (!specOk) spectrumMode = false;
+  $('specControls').hidden = !specOk;
+  $('specMode').disabled = !specOk || !usable;
+  $('iqMode').disabled = !usable;
+  $('iqMode').setAttribute('aria-pressed', String(!spectrumMode));
+  $('specMode').setAttribute('aria-pressed', String(spectrumMode));
+  $('iqControls').hidden = spectrumMode;
+  $('specOptions').hidden = !spectrumMode;
+  const options = $(spectrumMode ? 'specOptions' : 'iqControls');
+  if ($('fftControl').parentElement !== options) options.prepend($('fftControl'));
+  $('specRow').disabled = !specOk || !spectrumMode || !usable;
+  $('specDetector').disabled = $('specRow').disabled;
+  if (connected && spectrumMode) $('bits').disabled = true;
+  $('pause').disabled = !usable;
+}
+// In spectrum mode, only rates and FFT sizes from the firmware's profiles are valid.
+function updateRateAndFftOptions() {
+  const specOn = connected && spectrumMode;
+  for (const o of $('rate').options) {
+    o.disabled = specOn && !radio.spectrumProfiles(Number(o.value)).length;
+    o.hidden = o.disabled;
+  }
+  if (specOn && !radio.spectrumProfiles(Number($('rate').value)).length)
+    $('rate').value = String(radio.specCapabilities.profiles[0][0]);
+  const sizes = specOn ? specSizes(Number($('rate').value)) : [512, 1024, 2048, 4096];
+  for (const o of $('fft').options) {
+    o.disabled = !sizes.includes(Number(o.value));
+    o.hidden = o.disabled;
+  }
+  $('specNote').hidden = !specOn;
+  $('specNote').textContent = radio.spectrumContinuous(Number($('rate').value), Number($('fft').value))
+    ? 'Continuous RF capture; only selected FFT windows are analyzed. Skipped work and dropped frames are reported.'
+    : 'On-chip FFT of repeated snapshots. Reception has gaps between snapshots.';
+  if (!sizes.includes(Number($('fft').value)))
+    $('fft').value = String(specOn ? sizes[sizes.length - 1] : 2048);
+}
+function updateGainAndBandwidthControls(usable) {
   for (const b of document.querySelectorAll('[data-freq]'))
     b.disabled =
-      !connected ||
-      !!radio.changingBaud ||
-      !!radio.changingGpio ||
+      !usable ||
       (+b.dataset.freq === 5500 && radio.family !== 'C5') ||
       !radio.validFrequency(+b.dataset.freq);
-  const gainDisabled = !connected || !!radio.changingBaud || !!radio.changingGpio || !radio.hasGain;
+  const gainDisabled = !usable || !radio.hasGain;
   $('gainAgc').disabled = gainDisabled || !radio.hasHardwareAgc;
   $('gainManual').disabled = gainDisabled;
   $('gainAgc').setAttribute('aria-pressed', String(gainMode === 'HARDWARE'));
   $('gainManual').setAttribute('aria-pressed', String(gainMode === 'MANUAL'));
-  $('gain').disabled =
-    !connected || !!radio.changingBaud || !!radio.changingGpio || gainMode !== 'MANUAL' || !radio.hasGain;
-  const bandwidthDisabled =
-    !connected || !!radio.changingBaud || !!radio.changingGpio || !radio.bandwidthRange;
+  $('gain').disabled = gainDisabled || gainMode !== 'MANUAL';
+  const bandwidthDisabled = !usable || !radio.bandwidthRange;
   $('bandwidthOpen').disabled = bandwidthDisabled;
   $('bandwidthFilter').disabled = bandwidthDisabled;
   $('bandwidthOpen').setAttribute('aria-pressed', String(analogBandwidth === 0));
