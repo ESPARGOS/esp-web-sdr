@@ -435,6 +435,13 @@ function draw() {
   sc.fillRect(0, 0, w, h);
   sc.lineWidth = d;
   sc.font = `${14 * d}px Carlito,sans-serif`;
+  drawLevelGrid(w, h, d, floor, range);
+  drawFrequencyGrid(w, h, d);
+  if ($('hold').checked) drawTrace(maximum, '#e6b969', false, floor, range);
+  drawTrace(trace, '#37c964', true, floor, range);
+}
+// Horizontal lines with dB labels.
+function drawLevelGrid(w, h, d, floor, range) {
   for (let i = 0; i <= 4; i++) {
     const y = (i * h) / 4;
     sc.strokeStyle = '#344047';
@@ -445,68 +452,68 @@ function draw() {
     sc.fillStyle = '#a1adb2';
     sc.fillText(`${Math.round(floor + range - (i * range) / 4)}`, 8 * d, Math.max(16 * d, y - 5 * d));
   }
-  {
-    const c = latest ? { frequency: latest.frequency, rate: latest.rate } : config(),
-      t = axisTicks(c, w);
-    sc.strokeStyle = '#202a2f';
-    sc.beginPath();
-    for (const f of t.minors) {
-      const x = Math.round(t.x(f)) + 0.5;
-      sc.moveTo(x, 0);
-      sc.lineTo(x, h);
-    }
-    sc.stroke();
-    sc.strokeStyle = '#33424a';
-    sc.beginPath();
-    for (const f of t.major) {
-      const x = Math.round(t.x(f)) + 0.5;
-      sc.moveTo(x, 0);
-      sc.lineTo(x, h);
-    }
-    sc.stroke();
-    if (tuneFrequency !== c.frequency) {
-      const x = t.x(tuneFrequency * 1e6);
-      sc.save();
-      sc.setLineDash([4 * d, 4 * d]);
-      sc.strokeStyle = '#37c96490';
-      sc.beginPath();
-      sc.moveTo(x, 0);
-      sc.lineTo(x, h);
-      sc.stroke();
-      sc.restore();
-    }
-    drawAxis(c);
-  }
-  function line(values, color, fill) {
-    if (!values) return;
-    sc.beginPath();
-    const L = values.length - 1,
-      sp = view.b - view.a,
-      i0 = Math.max(0, Math.floor(view.a * L) - 1),
-      i1 = Math.min(L, Math.ceil(view.b * L) + 1);
-    for (let i = i0; i <= i1; i++) {
-      const v = values[i],
-        x = ((i / L - view.a) / sp) * w,
-        y = Math.max(0, Math.min(h, (1 - (v - floor) / range) * h));
-      if (i > i0) sc.lineTo(x, y);
-      else sc.moveTo(x, y);
-    }
+}
+// Vertical frequency lines, plus a dashed line at a pending retune.
+function drawFrequencyGrid(w, h, d) {
+  const c = latest ? { frequency: latest.frequency, rate: latest.rate } : config(),
+    t = axisTicks(c, w);
+  for (const [ticks, color] of [
+    [t.minors, '#202a2f'],
+    [t.major, '#33424a'],
+  ]) {
     sc.strokeStyle = color;
-    sc.lineWidth = 1.2 * d;
-    sc.stroke();
-    if (fill) {
-      sc.lineTo(w, h);
-      sc.lineTo(0, h);
-      sc.closePath();
-      const g = sc.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0, '#37c96445');
-      g.addColorStop(1, '#37c96403');
-      sc.fillStyle = g;
-      sc.fill();
+    sc.beginPath();
+    for (const f of ticks) {
+      const x = Math.round(t.x(f)) + 0.5;
+      sc.moveTo(x, 0);
+      sc.lineTo(x, h);
     }
+    sc.stroke();
   }
-  if ($('hold').checked) line(maximum, '#e6b969', false);
-  line(trace, '#37c964', true);
+  if (tuneFrequency !== c.frequency) {
+    const x = t.x(tuneFrequency * 1e6);
+    sc.save();
+    sc.setLineDash([4 * d, 4 * d]);
+    sc.strokeStyle = '#37c96490';
+    sc.beginPath();
+    sc.moveTo(x, 0);
+    sc.lineTo(x, h);
+    sc.stroke();
+    sc.restore();
+  }
+  drawAxis(c);
+}
+// One spectrum trace over the visible part of the view, optionally filled.
+function drawTrace(values, color, fill, floor, range) {
+  if (!values) return;
+  const w = spec.width,
+    h = spec.height,
+    d = Math.min(devicePixelRatio || 1, 2);
+  sc.beginPath();
+  const L = values.length - 1,
+    sp = view.b - view.a,
+    i0 = Math.max(0, Math.floor(view.a * L) - 1),
+    i1 = Math.min(L, Math.ceil(view.b * L) + 1);
+  for (let i = i0; i <= i1; i++) {
+    const v = values[i],
+      x = ((i / L - view.a) / sp) * w,
+      y = Math.max(0, Math.min(h, (1 - (v - floor) / range) * h));
+    if (i > i0) sc.lineTo(x, y);
+    else sc.moveTo(x, y);
+  }
+  sc.strokeStyle = color;
+  sc.lineWidth = 1.2 * d;
+  sc.stroke();
+  if (fill) {
+    sc.lineTo(w, h);
+    sc.lineTo(0, h);
+    sc.closePath();
+    const g = sc.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#37c96445');
+    g.addColorStop(1, '#37c96403');
+    sc.fillStyle = g;
+    sc.fill();
+  }
 }
 function render(f) {
   const k = [
