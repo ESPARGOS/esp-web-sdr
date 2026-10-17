@@ -1014,104 +1014,90 @@ class SpectrumDecoder {
     let at = 0;
     while (this.bytes.length - at >= 4) {
       const b = this.bytes.subarray(at);
-      if (b[0] !== 83 || b[1] !== 80) {
-        at++;
-        continue;
-      }
-      if (b[2] === 69 && b[3] === 67) {
-        if (b.length < 8) break;
-        if (String.fromCharCode(...b.subarray(0, 8)) !== 'SPECEND ') {
-          at++;
-          continue;
-        }
-        const end = b.indexOf(10);
-        if (end < 0) {
-          if (b.length > 256) {
-            at++;
-            continue;
-          }
-          break;
-        }
-        const report = String.fromCharCode(...b.subarray(0, end)).trim();
-        if (!/^SPECEND(?: \d+){12}$/.test(report)) {
-          at++;
-          continue;
-        }
-        events.push({ report, status: Number(report.split(' ')[1]) });
-        at += end + 1;
-        continue;
-      }
-      if (b[2] === 83 && b[3] === 49) {
-        // SPS1: chip statistics (firmware with SPECSTAT)
-        if (b.length < 40) break;
-        const dv = new DataView(b.buffer, b.byteOffset, 40);
-        if (crc32(b.subarray(0, 36)) !== dv.getUint32(36, true)) {
-          this.crcErrors++;
-          at++;
-          continue;
-        }
-        events.push({
-          stats: {
-            core0: dv.getUint16(4, true) / 10,
-            core1: dv.getUint16(6, true) / 10,
-            coverage: dv.getUint16(8, true) / 10,
-            dual: !!(b[10] & 1),
-            assist: !!(b[10] & 2),
-            heapFree: dv.getUint32(12, true),
-            heapLargest: dv.getUint32(16, true),
-            abandoned: dv.getUint32(20, true),
-            drops: dv.getUint32(24, true),
-            lateMax: dv.getUint16(28, true),
-            queue: dv.getUint16(30, true) / 10,
-            fftsPerS: dv.getUint32(32, true),
-            t: performance.now(),
-          },
-        });
-        at += 40;
-        continue;
-      }
-      if (b[2] !== 67 || b[3] !== 49) {
-        at++;
-        continue;
-      }
-      const length = 32 + this.n;
-      if (b.length < length) {
-        const text = String.fromCharCode(...b);
-        const stop = text.indexOf('SPECEND ');
-        if (stop >= 0 && /^SPECEND(?: \d+){12}\n/.test(text.slice(stop))) {
-          this.crcErrors++;
-          at += stop;
-          continue;
-        }
-        break;
-      }
-      const dv = new DataView(b.buffer, b.byteOffset, length);
-      if (
-        b[26] !== Math.log2(this.n) ||
-        b[27] !== 2 ||
-        crc32(b.subarray(0, length - 4)) !== dv.getUint32(length - 4, true)
-      ) {
-        this.crcErrors++;
-        at++;
-        continue;
-      }
-      const h = {
-        frame: dv.getUint32(4, true),
-        pairIndex: Number(dv.getBigUint64(8, true)),
-        pairs: dv.getUint32(16, true),
-        ffts: dv.getUint16(20, true),
-        flags: b[22],
-        gain: b[23],
-        drops: dv.getUint16(24, true),
-        step: b[27],
-        n: this.n,
-        bytes: length,
-      };
-      events.push({ header: h, bins: b.slice(28, 28 + this.n) });
-      at += length;
+      const tag = String.fromCharCode(b[0], b[1], b[2], b[3]);
+      const parser = { SPEC: 'parseEnd', SPS1: 'parseStats', SPC1: 'parseFrame' }[tag];
+      // Each parser returns null to wait for more bytes, or how many bytes it used.
+      const result = parser ? this[parser](b) : { used: 1 };
+      if (!result) break;
+      if (result.event) events.push(result.event);
+      at += result.used;
     }
     this.bytes = this.bytes.slice(at);
     return events;
+  }
+
+  // "SPECEND <12 numbers>\n" ends a stream.
+  parseEnd(b) {
+    if (b.length < 8) return null;
+    if (String.fromCharCode(...b.subarray(0, 8)) !== 'SPECEND ') return { used: 1 };
+    const end = b.indexOf(10);
+    if (end < 0) return b.length > 256 ? { used: 1 } : null;
+    const report = String.fromCharCode(...b.subarray(0, end)).trim();
+    if (!/^SPECEND(?: \d+){12}$/.test(report)) return { used: 1 };
+    return { used: end + 1, event: { report, status: Number(report.split(' ')[1]) } };
+  }
+
+  // SPS1: 40-byte chip statistics (firmware with SPECSTAT).
+  parseStats(b) {
+    if (b.length < 40) return null;
+    const dv = new DataView(b.buffer, b.byteOffset, 40);
+    if (crc32(b.subarray(0, 36)) !== dv.getUint32(36, true)) {
+      this.crcErrors++;
+      return { used: 1 };
+    }
+    const stats = {
+      core0: dv.getUint16(4, true) / 10,
+      core1: dv.getUint16(6, true) / 10,
+      coverage: dv.getUint16(8, true) / 10,
+      dual: !!(b[10] & 1),
+      assist: !!(b[10] & 2),
+      heapFree: dv.getUint32(12, true),
+      heapLargest: dv.getUint32(16, true),
+      abandoned: dv.getUint32(20, true),
+      drops: dv.getUint32(24, true),
+      lateMax: dv.getUint16(28, true),
+      queue: dv.getUint16(30, true) / 10,
+      fftsPerS: dv.getUint32(32, true),
+      t: performance.now(),
+    };
+    return { used: 40, event: { stats } };
+  }
+
+  // SPC1: 28-byte header, n spectrum bins, CRC32.
+  parseFrame(b) {
+    const length = 32 + this.n;
+    if (b.length < length) {
+      // A stop report inside a frame means the frame was cut short.
+      const text = String.fromCharCode(...b);
+      const stop = text.indexOf('SPECEND ');
+      if (stop >= 0 && /^SPECEND(?: \d+){12}\n/.test(text.slice(stop))) {
+        this.crcErrors++;
+        return { used: stop };
+      }
+      return null;
+    }
+    const dv = new DataView(b.buffer, b.byteOffset, length);
+    if (
+      b[26] !== Math.log2(this.n) ||
+      b[27] !== 2 ||
+      crc32(b.subarray(0, length - 4)) !== dv.getUint32(length - 4, true)
+    ) {
+      this.crcErrors++;
+      return { used: 1 };
+    }
+    const header = {
+      frame: dv.getUint32(4, true),
+      pairIndex: Number(dv.getBigUint64(8, true)),
+      pairs: dv.getUint32(16, true),
+      ffts: dv.getUint16(20, true),
+      flags: b[22],
+      gain: b[23],
+      drops: dv.getUint16(24, true),
+      step: b[27],
+      n: this.n,
+      bytes: length,
+    };
+    return { used: length, event: { header, bins: b.slice(28, 28 + this.n) } };
   }
 }
 
