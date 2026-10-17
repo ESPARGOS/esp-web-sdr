@@ -32,17 +32,28 @@ on the desktop, or Chrome on Android.
    and pick the port. Reception starts right away.
 
 The desktop uses WebSerial, which works with both native USB ports and
-USB-to-UART bridges. Android uses WebUSB, which only works with the chip's
-native USB connector (not CP210x, CH340 or FT232 bridges); connect the board
-through a USB OTG adapter. Both menus let you pick the other transport. Both
-APIs need HTTPS or localhost.
-
-<img src="docs/android-chrome-screenshot.jpeg" width="320" alt="ESP-WebSDR in Chrome on Android, showing a live 2.4 GHz power spectrum and waterfall">
+USB-to-UART bridges. Both APIs need HTTPS or localhost.
 
 The installer also has the **ESP32-S31 Ethernet/USB firmware for
 [SoapyESPSDR](https://github.com/ESPARGOS/SoapyESPSDR)**. That firmware streams
 continuously to desktop SDR applications and has its own web page at the
 board's DHCP address; it does not work with this viewer.
+
+## Android
+
+ESP-WebSDR runs in **Chrome on Android** without an app, using WebUSB.
+
+1. Connect the board's **native USB connector** to the phone, through a USB
+   OTG adapter if needed. WebUSB can't use USB-to-UART bridges (CP210x, CH340,
+   FT232), so boards without native USB (ESP32, C2) don't work on Android.
+2. Install the firmware with the [installer](https://espargos.net/espsdr/app/flash.html):
+   tap **Connect via WebUSB** and grant access. If it can't enter the
+   bootloader, hold BOOT, tap RESET, release BOOT and try again.
+3. Open the [viewer](https://espargos.net/espsdr/app/) and tap
+   **Connect ESP-SDR**. If flashing changed the board's USB identity, select it
+   again.
+
+<img src="docs/android-chrome-screenshot.jpeg" width="320" alt="ESP-WebSDR in Chrome on Android, showing a live 2.4 GHz power spectrum and waterfall">
 
 ## Troubleshooting
 
