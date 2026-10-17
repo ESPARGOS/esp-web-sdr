@@ -13,3 +13,9 @@ test('streaming recovery UART uses its validated flashing speed',()=>{
  assert.equal(flashingBaudRate({application:'soapysdr'}),115200);
  assert.equal(flashingBaudRate({target:'esp32s31'}),2000000);
 });
+
+test('S31 Korvo LCD installation explains the on-device analyzer and its UART speed',()=>{
+ const text=applicationGuidance({target:'esp32s31',application:'display'});
+ assert.match(text,/touch LCD/);assert.match(text,/does not connect/);
+ assert.equal(flashingBaudRate({application:'display'}),921600);
+});

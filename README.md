@@ -43,6 +43,9 @@ The installer also includes the **ESP32-S31 Ethernet / USB profile for
 [SoapyESPSDR](https://github.com/ESPARGOS/SoapyESPSDR)**. Select that profile to
 stream continuously to desktop SDR applications. It has its own receiver
 control page at the board's DHCP address and does not use this serial viewer.
+The **ESP32-S31-Korvo-1 LCD spectrum analyzer** profile runs entirely on that
+board's touch display; see the
+[Korvo analyzer guide](https://github.com/ESPARGOS/esp-sdr/blob/main/docs/korvo.md).
 
 ESP32-C2 / ESP8684 boards are supported over UART, with up to 8,190 I/Q samples
 and 256–2048-bin snapshot FFTs at 80/40/16 MS/s. The packaged C2 firmware requires

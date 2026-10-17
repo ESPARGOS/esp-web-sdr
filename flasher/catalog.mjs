@@ -54,15 +54,20 @@ export function firmwareDate(variant) {
 // Keep post-install guidance tied to the selected application, not the chip:
 // the S31 has both a serial viewer profile and a Soapy streaming profile.
 export function applicationGuidance(variant) {
- return variant?.application==='soapysdr'
-  ? 'Use SoapyESPSDR over Ethernet or native high-speed USB. Open the device IP address in a browser for receiver controls. This profile does not connect to the ESP-WebSDR serial viewer.'
-  : 'Open ESP-WebSDR and connect to the device.';
+ if(variant?.application==='soapysdr')
+  return 'Use SoapyESPSDR over Ethernet or native high-speed USB. Open the device IP address in a browser for receiver controls. This profile does not connect to the ESP-WebSDR serial viewer.';
+ if(variant?.application==='display')
+  return 'The spectrum analyzer runs on the board\u2019s own touch LCD; tap the frequency to retune. This profile does not connect to the ESP-WebSDR serial viewer.';
+ return 'Open ESP-WebSDR and connect to the device.';
 }
 
 export function flashingBaudRate(variant) {
  // Streaming uses Ethernet/USB for samples; its recovery UART need not meet
- // the serial viewer's 2 Mbaud requirement.
- return variant?.application==='soapysdr'?115200:2000000;
+ // the serial viewer's 2 Mbaud requirement. The Korvo LCD profile only logs
+ // over its CP2102N bridge, which was verified at 921600 baud.
+ if(variant?.application==='soapysdr')return 115200;
+ if(variant?.application==='display')return 921600;
+ return 2000000;
 }
 
 // C2 firmware must match the physical crystal, independently of flash size.
