@@ -370,7 +370,13 @@ class BurstSerialRadio {
   async synchronize() {
     // Opening a UART bridge or native serial port can reset the board. A command
     // sent during boot is lost, so retry with a fresh marker after draining logs.
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // A USB-JTAG port can also stop sending after the chip was reset through its
+    // UART pins (seen on the S31 and C61); a chip reset over USB recovers it.
+    const info = this.port.getInfo?.() ?? {},
+      usbJtag = info.usbVendorId === 0x303a && info.usbProductId === 0x1001;
+    for (let attempt = 0; attempt < (usbJtag ? 4 : 3); attempt++) {
+      // Opening a USB-JTAG port doesn't reset the chip, so a healthy one answers at once.
+      if (usbJtag && attempt === 1) await this.resetUsbJtag();
       const marker = 'SYNC ' + Date.now(),
         deadline = performance.now() + 2000;
       await this.command('\n' + marker);
@@ -388,6 +394,12 @@ class BurstSerialRadio {
     throw Error(
       'SDR synchronization failed. Unplug your ESP32 device and plug it back in, then try connecting again. Check the UART baud setting, install ESP-SDR firmware, and close other SDR clients.',
     );
+  }
+  // The USB-JTAG peripheral resets the chip when DTR falls while RTS is high
+  // (as it is after opening the port); the USB connection stays up.
+  async resetUsbJtag() {
+    await this.port.setSignals({ dataTerminalReady: false }).catch(() => {});
+    await new Promise((resolve) => setTimeout(resolve, 1500));
   }
   async startUartFirmware() {
     // USB/UART bridges wire DTR to GPIO0 and RTS to EN. A previous flasher or

@@ -113,3 +113,25 @@ test('a serial break while the board resets does not end the connection', async 
   await lost.pump();
   assert.equal(lost.failed, deviceLost);
 });
+test('a silent USB-JTAG port is reset through DTR before synchronizing again', async () => {
+  const events = [];
+  const r = makeRadio((f) => f());
+  r.port = {
+    getInfo: () => ({ usbVendorId: 0x303a, usbProductId: 0x1001 }),
+    setSignals: async (s) => events.push({ ...s }),
+  };
+  let marker = '';
+  r.command = async (c) => {
+    marker = c.trim();
+    events.push('sync');
+  };
+  let reply = [];
+  r.read = async () => {
+    // Silent until the chip has been reset, then echo the marker.
+    if (!events.some((e) => e.dataTerminalReady === false)) throw Error('timeout');
+    if (!reply.length) reply = [...new TextEncoder().encode(marker + '\n')];
+    return Uint8Array.of(reply.shift());
+  };
+  await r.synchronize();
+  assert.deepEqual(events, ['sync', { dataTerminalReady: false }, 'sync']);
+});
