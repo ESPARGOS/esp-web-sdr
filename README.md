@@ -64,6 +64,15 @@ For native Espressif USB ports, a udev rule also works:
 `/etc/udev/rules.d/70-esp-web-sdr.rules`, then `sudo udevadm control --reload-rules`
 and reconnect the board.
 
+**"The device has been lost" right after connecting (Linux):** a program that
+used the port before, such as esptool, `idf.py monitor` or anything else built
+on pyserial, left it in a mode that Chrome misreads as a disconnect. Reset the
+port, or unplug and replug the board:
+
+```sh
+stty -F /dev/ttyUSB0 min 1
+```
+
 **WebUSB says "Unable to claim interface":** the operating system's driver
 owns the port. Use WebSerial instead; see
 [USB transport notes](docs/usb-transport.md#chromium-on-desktop-linux-unable-to-claim-interface).
