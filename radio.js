@@ -81,6 +81,8 @@ const MEASURED_RANGES = {
 };
 
 // Firmware rate codes: the index into this table is the code sent in CAP16/CAP20.
+// WebSerial errors after which the port stays open with a new readable stream.
+const NONFATAL_SERIAL_ERRORS = ['BreakError', 'FramingError', 'ParityError', 'BufferOverrunError'];
 const RATE_CODES = [
   80000000, 40000000, 20000000, 10000000, 8000000, 4000000, 16000000, 32000000, 10666667, 6400000,
 ];
@@ -280,7 +282,19 @@ class BurstSerialRadio {
   async pump() {
     try {
       for (;;) {
-        const { value, done } = await this.reader.read();
+        let chunk;
+        try {
+          chunk = await this.reader.read();
+        } catch (e) {
+          // A break or framing error ends the stream but not the port. UART
+          // bridges report one while the board is held in reset, so continue
+          // with a fresh reader; SYNC markers and CRCs catch the damage.
+          if (!NONFATAL_SERIAL_ERRORS.includes(e?.name) || !this.port?.readable) throw e;
+          this.reader.releaseLock();
+          this.reader = this.port.readable.getReader();
+          continue;
+        }
+        const { value, done } = chunk;
         if (done) break;
         if (value) {
           this.queue.push(value);

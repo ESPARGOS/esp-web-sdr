@@ -67,3 +67,36 @@ test('connect resets a UART bridge before sending the synchronization marker', a
   assert.equal((await r.connect()).family, 'ESP32');
   assert.equal(responses.length, 0);
 });
+test('a serial break while the board resets does not end the connection', async () => {
+  const r = makeRadio();
+  const chunk = (text) => ({ value: new TextEncoder().encode(text), done: false });
+  const breakError = Object.assign(new Error('Break received'), { name: 'BreakError' });
+  const streams = [
+    [chunk('boot'), breakError],
+    [chunk('OK\n'), { done: true }],
+  ];
+  const reader = (steps) => ({
+    read: async () => {
+      const step = steps.shift();
+      if (step instanceof Error) throw step;
+      return step;
+    },
+    releaseLock: () => {},
+  });
+  r.port = { readable: { getReader: () => reader(streams.shift()) } };
+  r.reader = r.port.readable.getReader();
+  r.queue = [];
+  r.queued = 0;
+  await r.pump();
+  assert.equal(new TextDecoder().decode(Buffer.concat(r.queue)), 'bootOK\n');
+  assert.equal(r.failed.message, 'Device disconnected');
+
+  const lost = makeRadio();
+  const deviceLost = Object.assign(new Error('The device has been lost.'), { name: 'NetworkError' });
+  lost.port = { readable: { getReader: () => assert.fail('no new reader after a fatal error') } };
+  lost.reader = reader([deviceLost]);
+  lost.queue = [];
+  lost.queued = 0;
+  await lost.pump();
+  assert.equal(lost.failed, deviceLost);
+});
