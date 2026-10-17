@@ -393,7 +393,18 @@ class BurstSerialRadio {
     // USB/UART bridges wire DTR to GPIO0 and RTS to EN. A previous flasher or
     // port-open transition can leave the ESP32 in reset or the ROM downloader.
     // Native USB ports must not receive this external-UART reset sequence.
-    const vendor = this.port.getInfo?.().usbVendorId;
+    const { usbVendorId: vendor, usbProductId: product } = this.port.getInfo?.() ?? {};
+    if (vendor === 0x303a && product === 0x0002) {
+      // ESP32-S2 native USB: the firmware stays silent while DTR is high, and
+      // a falling RTS reboots it, into the ROM bootloader if DTR is still high.
+      // Lowering DTR first gives a clean reboot, and with both lines low,
+      // closing the port later cannot send it to the bootloader.
+      await this.port.setSignals({ dataTerminalReady: false });
+      await this.port.setSignals({ requestToSend: false });
+      // The firmware restarts 50 ms later; don't synchronize with the old run.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return;
+    }
     if (![0x10c4, 0x1a86, 0x0403, 0x067b].includes(vendor)) return;
     await this.port.setSignals({ dataTerminalReady: false, requestToSend: true });
     try {

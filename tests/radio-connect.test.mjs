@@ -26,6 +26,19 @@ test('UART bridges exit reset and ROM download mode before synchronization', asy
     ]);
   }
 });
+test('ESP32-S2 native USB lowers DTR before RTS so it reboots into the firmware', async () => {
+  const events = [];
+  const r = makeRadio((f, ms) => {
+    events.push(ms);
+    f();
+  });
+  r.port = {
+    getInfo: () => ({ usbVendorId: 0x303a, usbProductId: 0x0002 }),
+    setSignals: async (s) => events.push({ ...s }),
+  };
+  await r.startUartFirmware();
+  assert.deepEqual(events, [{ dataTerminalReady: false }, { requestToSend: false }, 200]);
+});
 test('native USB and unidentified ports do not receive UART reset signals', async () => {
   for (const info of [{ usbVendorId: 0x303a }, {}]) {
     const r = makeRadio();
