@@ -43,7 +43,6 @@ function applyRadioProfile() {
   labels();
 }
 let spectrumMode = false,
-  preferContinuous = false, // next FFT-size update prefers a gap-free size
   connectionBusy = false,
   firmwareHandoff = false;
 let firmwareCheck = 0,
@@ -686,12 +685,10 @@ function updateRateAndFftOptions() {
     o.disabled = !sizes.includes(Number(o.value));
     o.hidden = o.disabled;
   }
-  // Prefer gap-free capture: some chips are continuous only at some FFT sizes.
+  // Some chips capture continuously only at some FFT sizes; the note names them.
   const continuous = specOn ? sizes.filter((n) => radio.spectrumContinuous(rate, n)) : [];
   const fft = Number($('fft').value);
-  if (!sizes.includes(fft) || (preferContinuous && continuous.length && !continuous.includes(fft)))
-    $('fft').value = String(specOn ? (continuous.at(-1) ?? sizes.at(-1)) : 2048);
-  preferContinuous = false;
+  if (!sizes.includes(fft)) $('fft').value = String(specOn ? sizes.at(-1) : 2048);
   $('specNote').hidden = !specOn;
   $('specNote').textContent = radio.spectrumContinuous(rate, Number($('fft').value))
     ? 'Continuous RF capture: no gaps in the recorded signal; the chip analyzes as many FFT windows as it can (coverage).'
@@ -1091,7 +1088,6 @@ $('connect').onclick = async (ev) => {
       connected = true;
       checkFirmwareUpdate();
       spectrumMode = radio.canStreamSpectrum;
-      preferContinuous = true;
       applyRadioProfile();
       paused = false;
       previous = 0;
@@ -1413,7 +1409,6 @@ $('iqMode').onclick = () => {
 $('specMode').onclick = () => {
   if (!radio.canStreamSpectrum) return;
   spectrumMode = true;
-  preferContinuous = true;
   state();
   labels();
 };
