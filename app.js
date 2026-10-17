@@ -43,6 +43,7 @@ function applyRadioProfile() {
   labels();
 }
 let spectrumMode = false,
+  preferContinuous = false, // next FFT-size update prefers a gap-free size
   connectionBusy = false,
   firmwareHandoff = false;
 let firmwareCheck = 0,
@@ -679,17 +680,23 @@ function updateRateAndFftOptions() {
   }
   if (specOn && !radio.spectrumProfiles(Number($('rate').value)).length)
     $('rate').value = String(radio.specCapabilities.profiles[0][0]);
-  const sizes = specOn ? specSizes(Number($('rate').value)) : [512, 1024, 2048, 4096];
+  const rate = Number($('rate').value);
+  const sizes = specOn ? specSizes(rate) : [512, 1024, 2048, 4096];
   for (const o of $('fft').options) {
     o.disabled = !sizes.includes(Number(o.value));
     o.hidden = o.disabled;
   }
+  // Prefer gap-free capture: some chips are continuous only at some FFT sizes.
+  const continuous = specOn ? sizes.filter((n) => radio.spectrumContinuous(rate, n)) : [];
+  const fft = Number($('fft').value);
+  if (!sizes.includes(fft) || (preferContinuous && continuous.length && !continuous.includes(fft)))
+    $('fft').value = String(specOn ? (continuous.at(-1) ?? sizes.at(-1)) : 2048);
+  preferContinuous = false;
   $('specNote').hidden = !specOn;
-  $('specNote').textContent = radio.spectrumContinuous(Number($('rate').value), Number($('fft').value))
-    ? 'Continuous RF capture; only selected FFT windows are analyzed. Skipped work and dropped frames are reported.'
-    : 'On-chip FFT of repeated snapshots. Reception has gaps between snapshots.';
-  if (!sizes.includes(Number($('fft').value)))
-    $('fft').value = String(specOn ? sizes[sizes.length - 1] : 2048);
+  $('specNote').textContent = radio.spectrumContinuous(rate, Number($('fft').value))
+    ? 'Continuous RF capture: no gaps in the recorded signal; the chip analyzes as many FFT windows as it can (coverage).'
+    : 'On-chip FFT of repeated snapshots. Reception has gaps between snapshots.' +
+      (continuous.length ? ` Choose ${continuous.join('/')} bins for continuous capture.` : '');
 }
 function updateGainAndBandwidthControls(usable) {
   for (const b of document.querySelectorAll('[data-freq]'))
@@ -1084,6 +1091,7 @@ $('connect').onclick = async (ev) => {
       connected = true;
       checkFirmwareUpdate();
       spectrumMode = radio.canStreamSpectrum;
+      preferContinuous = true;
       applyRadioProfile();
       paused = false;
       previous = 0;
@@ -1405,6 +1413,7 @@ $('iqMode').onclick = () => {
 $('specMode').onclick = () => {
   if (!radio.canStreamSpectrum) return;
   spectrumMode = true;
+  preferContinuous = true;
   state();
   labels();
 };
