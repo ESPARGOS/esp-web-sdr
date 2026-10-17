@@ -65,19 +65,19 @@ let spectrumWorkspace;
 // Where each chip received a test tone over the air (one board per chip, see
 // esp-sdr docs/rx-controls.md). Outside these ranges reception is unlikely.
 const MEASURED_RANGES = {
-  ESP32: [[1850, 2750]],
-  C2: [[1850, 2750]],
+  ESP32: [[1850, 2850]],
+  C2: [[1850, 2950]],
   C3: [[1850, 2750]],
   C5: [
     [2200, 2650],
     [5180, 5800],
   ],
-  C6: [[1850, 2750]],
-  C61: [[2200, 2750]],
+  C6: [[1950, 2850]],
+  C61: [[2200, 2850]],
   H2: [[2300, 2650]],
   S2: [[1850, 2750]],
   S3: [[1850, 2750]],
-  S31: [[2150, 2750]],
+  S31: [[2150, 2850]],
 };
 
 // Firmware rate codes: the index into this table is the code sent in CAP16/CAP20.

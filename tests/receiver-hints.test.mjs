@@ -24,7 +24,7 @@ test('warnings mention the measured reception range only outside it', () => {
   assert.match(c5.frequencyWarning(2100), /2200–2650 MHz and 5180–5800 MHz/);
   const s31 = radioFor('S31SDR 6 burst 16380');
   assert.match(s31.frequencyWarning(2200), /PLL may not lock/);
-  assert.match(s31.frequencyWarning(2100), /2150–2750 MHz/);
+  assert.match(s31.frequencyWarning(2100), /2150–2850 MHz/);
 });
 
 test('captures report the fraction of clipped samples', () => {
