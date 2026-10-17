@@ -691,7 +691,7 @@ function updateRateAndFftOptions() {
   if (!sizes.includes(fft)) $('fft').value = String(specOn ? sizes.at(-1) : 2048);
   $('specNote').hidden = !specOn;
   $('specNote').textContent = radio.spectrumContinuous(rate, Number($('fft').value))
-    ? 'Continuous RF capture: no gaps in the recorded signal; the chip analyzes as many FFT windows as it can (coverage).'
+    ? 'Continuous capture: the recorded signal has no gaps, but the chip analyzes only part of it (FFT coverage, below the spectrum).'
     : 'On-chip FFT of repeated snapshots. Reception has gaps between snapshots.' +
       (continuous.length ? ` Choose ${continuous.join('/')} bins for continuous capture.` : '');
 }
@@ -1390,16 +1390,19 @@ function renderSpec(rows) {
   }
   $('throughput').textContent = ((specCount.length * (32 + nb)) / 1e3).toFixed(0);
   $('throughputLabel').textContent =
-    `kB/s over ${radio.transport} · ${c.rate / 1e6} MS/s on chip${specCov === null ? '' : ` · FFT on ${Math.round(specCov * 100)} % of samples`}`;
-  $('latency').textContent = specLast ? ((specLast.pairs / c.rate) * 1e3).toFixed(2) : '—';
+    `kB/s ${radio.transport} · ${c.rate / 1e6} MS/s${specCov === null ? '' : ` · ${specCov < 0.01 ? (specCov * 100).toFixed(1) : Math.round(specCov * 100)} % FFT coverage`}`;
+  // Signal time per spectrum; short spans (3.2 µs for 256 bins at 80 MS/s) in µs.
+  const span = specLast ? specLast.pairs / c.rate : null,
+    micro = span !== null && span < 1e-4;
+  $('latency').textContent = span === null ? '—' : micro ? (span * 1e6).toFixed(1) : (span * 1e3).toFixed(2);
   $('latencyLabel').textContent =
-    `ms / spectrum · ${c.maxHold ? 'max' : 'mean'} of ${specLast?.ffts ?? '—'} FFT`;
+    `${micro ? 'µs' : 'ms'} / spectrum · ${c.maxHold ? 'max' : 'mean'} of ${specLast?.ffts ?? '—'} FFT`;
   $('peak').textContent = ((c.frequency * 1e6 + ((peak - nb / 2) * c.rate) / nb) / 1e6).toFixed(4);
   const g = specInfo?.gain;
   $('gainStatus').textContent =
     g?.mode === 'HARDWARE' ? 'Hardware AGC' : g ? `Manual · index ${g.index}` : '';
   $('crc').textContent =
-    `SPEC · ${radio.spectrumContinuous(Number($('rate').value), Number($('fft').value)) ? 'continuous capture' : 'snapshots with gaps'} · #${specLast?.frame ?? 0}${specLast?.drops ? ` · ${specLast.drops} dropped` : ''}${specInfo?.crcErrors ? ` · ${specInfo.crcErrors} CRC err` : ''}${specInfo?.hostDropped ? ` · ${Math.round(specInfo.hostDropped / 1024)} kB skipped (page busy)` : ''}`;
+    `${radio.spectrumContinuous(Number($('rate').value), Number($('fft').value)) ? 'continuous capture' : 'snapshots with gaps'} · #${specLast?.frame ?? 0}${specLast?.drops ? ` · ${specLast.drops} dropped` : ''}${specInfo?.crcErrors ? ` · ${specInfo.crcErrors} CRC err` : ''}${specInfo?.hostDropped ? ` · ${Math.round(specInfo.hostDropped / 1024)} kB skipped (page busy)` : ''}`;
 }
 $('iqMode').onclick = () => {
   spectrumMode = false;
